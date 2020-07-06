@@ -30,7 +30,7 @@ ticks
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+A model for COVID-19
 
 ## HOW IT WORKS
 
