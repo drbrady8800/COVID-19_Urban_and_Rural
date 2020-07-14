@@ -111,7 +111,7 @@ pop-density
 pop-density
 50
 5000
-2500.0
+100.0
 10
 1
 NIL
