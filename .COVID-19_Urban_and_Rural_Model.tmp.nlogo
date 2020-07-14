@@ -47,7 +47,7 @@ to setup-patches
 end
 
 to setup-people
-  create-people pop-density * 5
+  create-people pop-density * 1
   ask people
   [
     set epi-status "susceptible"
@@ -111,7 +111,7 @@ pop-density
 pop-density
 50
 5000
-2500.0
+5000.0
 10
 1
 NIL
