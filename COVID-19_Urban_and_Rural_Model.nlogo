@@ -1,4 +1,62 @@
+globals
+[
+  num-infected
+]
 
+breed [people person]
+people-own
+[
+  epi-status      ; current epidemic state
+]
+
+to setup
+  clear-all
+  setup-patches
+  setup-people
+  reset-ticks
+;  start-epidemic 1
+;  calculate-globals
+end
+
+;to go
+;  ; check if still any infectious
+;  if all? people [epi-status = "susceptible" or epi-status = "immune" or epi-status = "dead"] [stop]
+;  ; housekeeping for start of day
+;  if prob-InfDeath + prob-InfHosp > 1 [ print "ERROR: total probabilities > 1" stop ]
+;  if prob-HospDeath + prob-HospCrit > 1 [ print "ERROR: total probabilities > 1" stop ]
+;  reset-counters
+;  trigger-update
+;  ; check scenario for change in settings
+;  if scenario-selector != "off" [revise-scenario]
+;  ; main functions
+;  move
+;  transition-status
+;  free-isolated
+;  symptomatic-actions
+;  transmit-infection
+;  ; housekeeping for end of day
+;  calculate-globals
+;  tick
+;end
+
+to setup-patches
+  ask patches
+  [
+    set pcolor white
+  ]
+end
+
+to setup-people
+  create-people pop-density * 5
+  ask people
+  [
+    set epi-status "susceptible"
+    set color blue
+    set size 0.5
+    set shape "default"
+    setxy random-xcor random-ycor
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -27,10 +85,42 @@ GRAPHICS-WINDOW
 ticks
 30.0
 
+BUTTON
+16
+28
+79
+61
+NIL
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+19
+216
+191
+249
+pop-density
+pop-density
+50
+5000
+100.0
+10
+1
+NIL
+HORIZONTAL
+
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+A model for COVID-19
 
 ## HOW IT WORKS
 
