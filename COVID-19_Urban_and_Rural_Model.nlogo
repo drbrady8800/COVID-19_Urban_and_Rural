@@ -1,6 +1,6 @@
 globals
 [
-  num-infected
+  num-infecte
 ]
 
 breed [people person]
