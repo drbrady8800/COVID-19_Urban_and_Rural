@@ -1,6 +1,6 @@
 globals
 [
-
+  n
 ]
 
 breed [people person]
@@ -47,7 +47,7 @@ to setup-patches
 end
 
 to setup-people
-  create-people pop-density * 1
+  create-people pop-density * 5
   ask people
   [
     set epi-status "susceptible"
@@ -111,7 +111,7 @@ pop-density
 pop-density
 50
 5000
-5000.0
+100.0
 10
 1
 NIL
