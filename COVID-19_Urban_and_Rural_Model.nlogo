@@ -1,4 +1,139 @@
+globals
+[
+  num-infected
+]
 
+; Allows for the referral of a group of turtles as people, and an individual agent as a person
+breed [people person]
+people-own
+[
+  epi-status      ; current epidemic state
+  when-exposed    ; the tick when the person is exposed
+]
+
+to setup
+  clear-all
+  setup-patches
+  setup-people
+  reset-ticks
+  start-epidemic 1
+;  calculate-globals
+end
+
+to go
+  ; Check if still any infectious
+  if all? people [epi-status = "susceptible" or epi-status = "immune" or epi-status = "dead"] [stop]
+  move
+  update-status
+  transmit-infection
+  tick
+end
+
+; moves specified proportion of people in a random direction that avoids passing world edges
+to move
+  ; If dead, do not move, immune does not matter so don't move for speed
+  let movers people with [ epi-status = "susceptible" or epi-status = "exposed"
+  or epi-status = "infectious" or epi-status = "immune"]
+  ask movers
+  [
+    ; Face a random direction and move forward 1-3
+    set heading random 360
+    forward random-float 2 + 1
+  ]
+end
+
+to start-epidemic [#exposed]
+  ask n-of #exposed people with [epi-status = "susceptible"]
+  [
+    set-status-infected
+  ]
+end
+
+; If it has been 7-21 days since infection set the status to immune
+to update-status
+  ; Get all people with an infectious status
+  let infectious people with [epi-status = "infectious"]
+  ask infectious
+  [
+    ; If it has been 7-21 days (random) since the infection set to immune
+    if (when-exposed + random 14 + 7 < ticks)
+    [
+      set-status-immune
+    ]
+  ]
+end
+
+; If infected there is a probability of exposing other people
+; in the same patch (about 120 yds)
+to transmit-infection
+  ; Make a agentset of infectious people
+  let transmitters people with [epi-status = "infectious"]
+
+  ask transmitters
+  [
+    ; All people that are susceptible in transmitters' patches
+    ask people-here with [epi-status = "susceptible"]
+    [
+      ; Set the probablity of infection to some number
+      let prob-infect 0.03
+
+      ; If the person is infected change their epi-status
+      if random-float 1 < prob-infect
+      [
+        set-status-infected
+      ]
+    ]
+  ]
+end
+
+; Set the status of a person to infected
+to set-status-infected
+  ; Actually change the status
+  set epi-status "infectious"
+  ; Change the look of the peson to make it obvious they are infected
+  set color orange
+  set size 1
+  set shape "dot"
+  set when-exposed ticks
+  ; Change the total number of infected to plus one
+  set num-infected num-infected + 1
+end
+
+to set-status-immune
+  ; Change the epi-status
+  set epi-status "immune"
+  ; Change the look of the person to make it obvious immune
+  set color green + 1
+  set size 0.5
+  set shape "square"
+  ; Change the total infected to infected minus 1
+  set num-infected num-infected - 1
+end
+
+; Essentially just set the patch color to white
+to setup-patches
+  ask patches
+  [
+    set pcolor white
+  ]
+end
+
+to setup-people
+  ; Act like the simulation zone is just a five square mile space in the county with uniform
+  ; population density
+  create-people pop-density * 5
+  ask people
+  [
+    ; Every person is susceptible
+    set epi-status "susceptible"
+    ; Set the color, size, and shape of every person
+    set color blue
+    set size 0.5
+    set shape "default"
+    ; Randomly spread out the people around the square
+    setxy random-xcor random-ycor
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -27,10 +162,59 @@ GRAPHICS-WINDOW
 ticks
 30.0
 
+BUTTON
+16
+28
+79
+61
+NIL
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+19
+216
+191
+249
+pop-density
+pop-density
+50
+5000
+2480.0
+10
+1
+NIL
+HORIZONTAL
+
+BUTTON
+100
+30
+163
+63
+NIL
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+A model for COVID-19
 
 ## HOW IT WORKS
 
