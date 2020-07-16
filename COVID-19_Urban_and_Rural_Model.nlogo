@@ -227,7 +227,7 @@ true
 true
 "" ""
 PENS
-"suceptible" 1.0 0 -13345367 true "" "plot count turtles with [color = blue]"
+"susceptible" 1.0 0 -13345367 true "" "plot count turtles with [color = blue]"
 "infected" 1.0 0 -955883 true "" "plot count turtles with [color = orange]"
 "recovered" 1.0 0 -10899396 true "" "plot count turtles with [color = green ]"
 
