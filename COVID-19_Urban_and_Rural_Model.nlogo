@@ -188,7 +188,7 @@ pop-density
 pop-density
 50
 5000
-2480.0
+1030.0
 10
 1
 NIL
@@ -210,6 +210,26 @@ NIL
 NIL
 NIL
 1
+
+PLOT
+675
+44
+1047
+227
+Population
+time
+Population (number of people)
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"susceptible" 1.0 0 -13345367 true "" "plot count turtles with [color = blue]"
+"infected" 1.0 0 -955883 true "" "plot count turtles with [color = orange]"
+"recovered" 1.0 0 -10899396 true "" "plot count turtles with [color = green ]"
 
 @#$#@#$#@
 ## WHAT IS IT?
