@@ -22,7 +22,7 @@ end
 
 to go
   ; Check if still any infectious
-  if all? people [epi-status = "susceptible" or epi-status = "immune" or epi-status = "dead"] [stop]
+  ; if all? people [epi-status = "susceptible" or epi-status = "immune" or epi-status = "dead"] [stop]
   move
   update-status
   transmit-infection
@@ -33,11 +33,45 @@ end
 to move
   ; If dead, do not move, immune does not matter so don't move for speed
   let movers people with [ epi-status = "susceptible" or epi-status = "exposed"
-  or epi-status = "infectious" or epi-status = "immune"]
+    or epi-status = "infectious"]; or epi-status = "immune"]
   ask movers
   [
-    ; Face a random direction and move forward 1-3
-    set heading random 360
+    ; Boolean to see if the person could have gotten infected leaving
+    let left-boundry false
+    ; If on a boundry, face away from the boundry, also need to check for corners
+    (ifelse (pxcor = min-pxcor) and (pycor = min-pycor) [ ; bottom left
+      set heading random 90
+      set left-boundry true
+    ] (pxcor = min-pxcor) and (pycor = max-pycor) [ ; top left
+      set heading random 90 + 90
+      set left-boundry true
+    ] (pxcor = max-pxcor) and (pycor = max-pycor) [ ; top right
+      set heading random 90 + 180
+      set left-boundry true
+    ] (pxcor = max-pxcor) and (pycor = min-pycor) [ ; bottom right
+      set heading random 90 + 270
+      set left-boundry true
+    ] (abs pxcor = max-pxcor) [
+      set heading (- heading)
+      set left-boundry true
+    ] (abs pycor = max-pycor) [
+      set heading (180 - heading)
+      set left-boundry true
+    ]
+    ; else
+    [
+      ; Set a random heading
+      set heading random 360
+      set left-boundry false
+    ])
+
+    ; If the person left the boundry, they could have gotten infected
+    if (left-boundry) [
+      if (random-float 1 < 0.005) [
+        set-status-exposed
+      ]
+    ]
+
     forward random-float 2 + 1
   ]
 end
@@ -45,11 +79,12 @@ end
 to start-epidemic [#exposed]
   ask n-of #exposed people with [epi-status = "susceptible"]
   [
-    set-status-infected
+    set-status-exposed
   ]
 end
 
 ; If it has been 7-21 days since infection set the status to immune
+; If it has been 2-14 days after exposure set the status to infectious
 to update-status
   ; Get all people with an infectious status
   let infectious people with [epi-status = "infectious"]
@@ -59,6 +94,17 @@ to update-status
     if (when-exposed + random 14 + 7 < ticks)
     [
       set-status-immune
+    ]
+  ]
+
+  ; Get all people with an exposed status
+  let exposed people with [epi-status = "exposed"]
+  ask exposed
+  [
+    ; If it has been 2-14 days (random) since the exposure set to exposed
+    if (when-exposed + random 12 + 2 < ticks)
+    [
+      set-status-infected
     ]
   ]
 end
@@ -86,12 +132,23 @@ to transmit-infection
   ]
 end
 
+; Set the status of a person to exposed
+to set-status-exposed
+  ; Change the status
+  set epi-status "exposed"
+  ; Change the appearance to exposed
+  set color orange + 1
+  set size 0.7
+  set shape "dot"
+  set when-exposed ticks
+end
+
 ; Set the status of a person to infected
 to set-status-infected
   ; Actually change the status
   set epi-status "infectious"
   ; Change the look of the peson to make it obvious they are infected
-  set color orange
+  set color red + 1
   set size 1
   set shape "dot"
   set when-exposed ticks
@@ -149,8 +206,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 -16
 16
@@ -188,7 +245,7 @@ pop-density
 pop-density
 50
 5000
-4240.0
+1560.0
 10
 1
 NIL
