@@ -14,7 +14,7 @@ people-own
   age             ; age of person, affects the death-rate
   death-rate      ; the death rate for the persons age group
   previous-patch  ; used to keep track of the patch a person was in before going to a store
-  in-store        ; a boolean to determine if person is in a store
+  in-store        ; a boolean to determine if the person is in a store
 ]
 
 to setup
