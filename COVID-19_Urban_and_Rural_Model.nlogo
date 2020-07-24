@@ -284,16 +284,16 @@ true
 true
 "" ""
 PENS
-"susceptible" 1.0 0 -13345367 true "" "plot count people with [epi-status = \"susceptible\"]"
-"exposed" 1.0 0 -955883 true "" "plot count people with [epi-status = \"exposed\"]"
-"immune" 1.0 0 -10899396 true "" "plot count people with [epi-status = \"immune\" ]"
-"infectious " 1.0 0 -2674135 true "" "plot count people with [epi-status = \"infectious\"]"
+"susceptible" 0.1 0 -13345367 true "" "plot (count people with [epi-status =\n \"susceptible\"] / total-num) * 100"
+"infected" 0.1 0 -955883 true "" "plot (count people with [epi-status = \n\"infectious\" or epi-status = \"exposed\"]\n/ total-num) * 100"
+"recovered" 0.1 0 -10899396 true "" "plot (count people with [epi-status =\n\"immune\"] / total-num) * 100"
+"deceased" 0.1 0 -7500403 true "" "plot (count people with [epi-status =\n\"dead\"] / total-num) * 100"
 
 MONITOR
-674
-234
-853
-279
+679
+241
+858
+286
 Number of people susceptible 
 count people with [epi-status = \"susceptible\"]
 0
@@ -301,12 +301,12 @@ count people with [epi-status = \"susceptible\"]
 11
 
 MONITOR
-879
-294
-1046
-339
-Number of people infectious
-count people with [epi-status = \"infectious\"]
+677
+300
+836
+345
+Number of people infected
+count people with [epi-status = \"infectious\" or\nepi-status = \"exposed\"]
 17
 1
 11
@@ -322,13 +322,143 @@ count people with [epi-status = \"immune\"]
 1
 11
 
+TEXTBOX
+72
+186
+142
+204
+AGE DATA
+14
+0.0
+1
+
+SLIDER
+18
+222
+190
+255
+children-pct
+children-pct
+0
+100
+24.8
+.1
+1
+%
+HORIZONTAL
+
+SLIDER
+17
+271
+189
+304
+twenties-pct
+twenties-pct
+0
+100
+13.7
+.1
+1
+%
+HORIZONTAL
+
+SLIDER
+19
+320
+191
+353
+thirties-pct
+thirties-pct
+0
+100
+13.5
+.1
+1
+%
+HORIZONTAL
+
+SLIDER
+18
+369
+190
+402
+fourties-pct
+fourties-pct
+0
+100
+12.3
+.1
+1
+%
+HORIZONTAL
+
+SLIDER
+15
+416
+187
+449
+fifties-pct
+fifties-pct
+0
+100
+12.9
+.1
+1
+%
+HORIZONTAL
+
+SLIDER
+18
+464
+190
+497
+sixties-pct
+sixties-pct
+0
+100
+11.6
+.1
+1
+%
+HORIZONTAL
+
+SLIDER
+15
+510
+187
+543
+seventies-pct
+seventies-pct
+0
+100
+7.2
+.1
+1
+%
+HORIZONTAL
+
+SLIDER
+17
+556
+189
+589
+eighty-plus-pct
+eighty-plus-pct
+0
+100
+4.0
+.1
+1
+%
+HORIZONTAL
+
 MONITOR
-883
-236
-1045
-281
-Number of people exposed
-count people with [epi-status = \"exposed\"]
+910
+243
+1077
+288
+Number of people deceased
+count people with [epi-status = \"dead\"]
 17
 1
 11
