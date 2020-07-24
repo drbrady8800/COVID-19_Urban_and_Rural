@@ -346,7 +346,9 @@ pop-density
 pop-density
 50
 5000
+
 1500.0
+
 10
 1
 people/sq. mile
@@ -385,16 +387,18 @@ true
 true
 "" ""
 PENS
+
 "susceptible" 0.1 0 -13345367 true "" "plot (count people with [epi-status =\n \"susceptible\"] / total-num) * 100"
 "infected" 0.1 0 -955883 true "" "plot (count people with [epi-status = \n\"infectious\" or epi-status = \"exposed\"]\n/ total-num) * 100"
 "recovered" 0.1 0 -10899396 true "" "plot (count people with [epi-status =\n\"immune\"] / total-num) * 100"
 "deceased" 0.1 0 -7500403 true "" "plot (count people with [epi-status =\n\"dead\"] / total-num) * 100"
 
+
 MONITOR
-679
-241
-858
-286
+674
+234
+853
+279
 Number of people susceptible 
 count people with [epi-status = \"susceptible\"]
 0
@@ -402,12 +406,14 @@ count people with [epi-status = \"susceptible\"]
 11
 
 MONITOR
+
 677
 300
 836
 345
 Number of people infected
 count people with [epi-status = \"infectious\" or\nepi-status = \"exposed\"]
+
 17
 1
 11
@@ -455,6 +461,7 @@ SLIDER
 304
 twenties-pct
 twenties-pct
+
 0
 100
 13.7
@@ -560,6 +567,17 @@ MONITOR
 288
 Number of people deceased
 count people with [epi-status = \"dead\"]
+17
+1
+11
+
+MONITOR
+883
+236
+1045
+281
+Number of people exposed
+count people with [epi-status = \"exposed\"]
 17
 1
 11
