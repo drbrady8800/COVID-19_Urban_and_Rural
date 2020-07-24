@@ -245,7 +245,7 @@ pop-density
 pop-density
 50
 5000
-1560.0
+680.0
 10
 1
 NIL
@@ -284,40 +284,52 @@ true
 true
 "" ""
 PENS
-"susceptible" 1.0 0 -13345367 true "" "plot count turtles with [color = blue]"
-"infected" 1.0 0 -955883 true "" "plot count turtles with [color = orange]"
-"recovered" 1.0 0 -10899396 true "" "plot count turtles with [color = green + 1]"
+"susceptible" 1.0 0 -13345367 true "" "plot count people with [epi-status = \"susceptible\"]"
+"exposed" 1.0 0 -955883 true "" "plot count people with [epi-status = \"exposed\"]"
+"immune" 1.0 0 -10899396 true "" "plot count people with [epi-status = \"immune\" ]"
+"infectious " 1.0 0 -2674135 true "" "plot count people with [epi-status = \"infectious\"]"
 
 MONITOR
-679
-241
-858
-286
+674
+234
+853
+279
 Number of people susceptible 
-count turtles with [color = blue ]
+count people with [epi-status = \"susceptible\"]
 0
 1
 11
 
 MONITOR
-677
-300
-836
-345
-Number of people infected
-count turtles with [color = orange ]
+879
+294
+1046
+339
+Number of people infectious
+count people with [epi-status = \"infectious\"]
 17
 1
 11
 
 MONITOR
-678
-372
-849
-417
-Number of people recovered
-count turtles with [color = green + 1]
+672
+294
+843
+339
+Number of people immune
+count people with [epi-status = \"immune\"]
 0
+1
+11
+
+MONITOR
+883
+236
+1045
+281
+Number of people exposed
+count people with [epi-status = \"exposed\"]
+17
 1
 11
 
