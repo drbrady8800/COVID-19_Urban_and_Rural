@@ -1,8 +1,6 @@
 globals
 [
   num-infected
-  total-num
-  stores
 ]
 
 ; Allows for the referral of a group of turtles as people, and an individual agent as a person
@@ -19,10 +17,8 @@ people-own
 
 to setup
   clear-all
-  set total-num pop-density * 5
   setup-patches
   setup-people
-  setup-stores
   reset-ticks
   start-epidemic 1
 ;  calculate-globals
@@ -37,14 +33,11 @@ to go
   tick
 end
 
-; Moves specified proportion of people in a random direction
-; If they hit a boundry turn the away so they do not gather at boudries
-; If they hit a boundry, increased chance of contraction of virus
-; Allows for people to go to the store as well (average of once per week)
+; moves specified proportion of people in a random direction that avoids passing world edges
 to move
   ; If dead, do not move, immune does not matter so don't move for speed
   let movers people with [ epi-status = "susceptible" or epi-status = "exposed"
-    or epi-status = "infectious"]
+    or epi-status = "infectious"]; or epi-status = "immune"]
   ask movers
   [
     ; Boolean to see if the person could have gotten infected leaving
@@ -76,31 +69,14 @@ to move
       set left-boundry false
     ])
 
-    ; Some of the movers will go to the store, can transmit infection there
-    ; Assume the average person goes to the store once a week
-    (ifelse (random-float 1 < 0.14) [
-      set previous-patch patch-here
-      set in-store true
-      move-to one-of stores
-    ] ; else move forward a random distance
-    [
-      ; If in a store, go back to previous patch
-      (ifelse (in-store) [
-        set in-store false
-          move-to previous-patch
-      ] ; else move randomly
-      [
-        forward random-float 2 + 1
-      ])
-    ])
-
     ; If the person left the boundry, they could have gotten infected
     if (left-boundry) [
-      let prob-infected-outside 0.03 * (num-infected / total-num)
-      if (random-float 1 < prob-infected-outside) [
+      if (random-float 1 < 0.005) [
         set-status-exposed
       ]
     ]
+
+    forward random-float 2 + 1
   ]
 end
 
@@ -121,7 +97,7 @@ to update-status
     ; If it has been 7-21 days (random) since the infection set to immune
     if (when-exposed + random 14 + 7 < ticks)
     [
-      set-status-dead-or-immune
+      set-status-immune
     ]
   ]
 
@@ -184,23 +160,13 @@ to set-status-infected
   set num-infected num-infected + 1
 end
 
-to set-status-dead-or-immune
-  (ifelse (death-rate > random-float 1) [
-    ; Change the epi-status
-    set epi-status "dead"
-    ; Change the look of the person to make it obvious dead
-    set color grey
-    set size 0.5
-    set shape "dot"
-  ] ; else
-  [
-    ; Change the epi-status
-    set epi-status "immune"
-    ; Change the look of the person to make it obvious immune
-    set color green + 1
-    set size 0.5
-    set shape "square"
-  ])
+to set-status-immune
+  ; Change the epi-status
+  set epi-status "immune"
+  ; Change the look of the person to make it obvious immune
+  set color green + 1
+  set size 0.5
+  set shape "square"
   ; Change the total infected to infected minus 1
   set num-infected num-infected - 1
 end
@@ -216,12 +182,11 @@ end
 to setup-people
   ; Act like the simulation zone is just a five square mile space in the county with uniform
   ; population density
-  create-people total-num
+  create-people pop-density * 5
   ask people
   [
     ; Every person is susceptible
     set epi-status "susceptible"
-    set in-store false
     ; Set the color, size, and shape of every person
     set color blue
     set size 0.5
@@ -229,68 +194,6 @@ to setup-people
     ; Randomly spread out the people around the square
     setxy random-xcor random-ycor
   ]
-  ; A variable that allows for percentage overflow, just divide given percents by total
-  let total-pct (children-pct + twenties-pct + thirties-pct + fourties-pct + fifties-pct + sixties-pct + seventies-pct + eighty-plus-pct)
-
-  ; Set the ages of people by sliders
-
-  ; Children: people aged 0-19
-  ask n-of (total-num * (children-pct / total-pct)) people [
-    set age random 19
-    set death-rate 0.002
-  ]
-
-  ; People aged 20-29
-  ask n-of (total-num * (twenties-pct / total-pct)) people [
-    set age random 9 + 20
-    set death-rate 0.002
-  ]
-
-  ; People aged 30-39
-  ask n-of (total-num * (thirties-pct / total-pct)) people [
-    set age random 9 + 30
-    set death-rate 0.002
-  ]
-
-  ; People aged 40-49
-  ask n-of (total-num * (fourties-pct / total-pct)) people [
-    set age random 9 + 40
-    set death-rate 0.004
-  ]
-
-  ; People aged 50-59
-  ask n-of (total-num * (fifties-pct / total-pct)) people [
-    set age random 9 + 50
-    set death-rate 0.006
-  ]
-
-  ; People aged 60-69
-  ask n-of (total-num * (sixties-pct / total-pct)) people [
-    set age random 9 + 60
-    set death-rate 0.025
-  ]
-
-  ; People aged 70-79
-  ask n-of (total-num * (seventies-pct / total-pct)) people [
-    set age random 9 + 70
-    set death-rate 0.08
-  ]
-
-  ; People aged 80-89 (treat it like everyone above 80)
-  ask n-of (total-num * (eighty-plus-pct / total-pct)) people [
-    set age random 9 + 80
-    set death-rate 0.16
-  ]
-end
-
-to setup-stores
-  ; Set the number of stores to be one store per 250 people
-  ; This makes it one store at the smallest population density and 84 at the highest
-  let num-stores (total-num / 300 + 1)
-  ask n-of num-stores patches [
-    set pcolor yellow
-  ]
-  set stores patches with [pcolor = yellow]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -338,18 +241,18 @@ NIL
 1
 
 SLIDER
-11
-98
-195
-131
+19
+216
+191
+249
 pop-density
 pop-density
 50
 5000
-1500.0
+680.0
 10
 1
-people/sq. mile
+NIL
 HORIZONTAL
 
 BUTTON
@@ -376,11 +279,11 @@ PLOT
 227
 Population
 time
-Percentage of People
+Population (number of people)
 0.0
 10.0
 0.0
-100.0
+10.0
 true
 true
 "" ""
@@ -413,11 +316,11 @@ count people with [epi-status = \"infectious\" or\nepi-status = \"exposed\"]
 11
 
 MONITOR
-678
-372
-849
-417
-Number of people recovered
+672
+294
+843
+339
+Number of people immune
 count people with [epi-status = \"immune\"]
 0
 1
