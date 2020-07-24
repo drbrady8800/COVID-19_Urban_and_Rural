@@ -314,10 +314,10 @@ GRAPHICS-WINDOW
 16
 -16
 16
-0
-0
 1
-ticks
+1
+1
+days
 30.0
 
 BUTTON
@@ -375,7 +375,7 @@ PLOT
 1047
 227
 Population
-time
+Time (days)
 Percentage of People
 0.0
 10.0
@@ -385,10 +385,10 @@ true
 true
 "" ""
 PENS
-"susceptible" 0.1 0 -13345367 true "" "plot (count people with [epi-status =\n \"susceptible\"] / total-num) * 100"
-"infected" 0.1 0 -955883 true "" "plot (count people with [epi-status = \n\"infectious\" or epi-status = \"exposed\"]\n/ total-num) * 100"
-"recovered" 0.1 0 -10899396 true "" "plot (count people with [epi-status =\n\"immune\"] / total-num) * 100"
-"deceased" 0.1 0 -7500403 true "" "plot (count people with [epi-status =\n\"dead\"] / total-num) * 100"
+"susceptible" 1.0 0 -13345367 true "" "plot (count people with [epi-status =\n \"susceptible\"] / total-num) * 100"
+"infected" 1.0 0 -955883 true "" "plot (count people with [epi-status = \n\"infectious\" or epi-status = \"exposed\"]\n/ total-num) * 100"
+"recovered" 1.0 0 -10899396 true "" "plot (count people with [epi-status =\n\"immune\"] / total-num) * 100"
+"deceased" 1.0 0 -7500403 true "" "plot (count people with [epi-status =\n\"dead\"] / total-num) * 100"
 
 MONITOR
 679
