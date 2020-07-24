@@ -39,7 +39,7 @@ end
 
 ; Moves specified proportion of people in a random direction
 ; If they hit a boundry turn the away so they do not gather at boudries
-; If they hit a boundry, increased chance of contraction of virus
+; If they hit a boundry, there is an increased chance of contraction of virus
 ; Allows for people to go to the store as well (average of once per week)
 to move
   ; If dead, do not move, immune does not matter so don't move for speed
