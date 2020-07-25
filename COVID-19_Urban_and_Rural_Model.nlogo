@@ -33,16 +33,19 @@ people-own
   when-exposed              ; the tick when the person is exposed
   age                       ; age of person, affects the death-rate
   death-rate                ; the death rate for the persons age group
-  previous-patch            ; used to keep track of the patch a person was in before going to a store
+  previous-patch            ; used to keep track of the patch a person was at before a store or school
   in-store                  ; a boolean to determine if the person is in a store
+  in-school                 ; a boolean to determine if the person is in a school
+  my-school                 ; if a child, the patch the person goes to school
 ]
 
 to setup
   clear-all
   setup-globals
   setup-patches
+  setup-stores
   setup-people
-  setup-stores-and-schools
+  setup-schools
   reset-ticks
   start-epidemic 1
 ;  calculate-globals
@@ -67,47 +70,30 @@ to move
     or epi-status = "infectious"]
   ask movers
   [
-    ; Boolean to see if the person could have gotten infected leaving
-    let left-boundry false
-    ; If on a boundry, face away from the boundry, also need to check for corners
-    (ifelse (pxcor = min-pxcor) and (pycor = min-pycor) [ ; bottom left
-      set heading random 90
-      set left-boundry true
-    ] (pxcor = min-pxcor) and (pycor = max-pycor) [ ; top left
-      set heading random 90 + 90
-      set left-boundry true
-    ] (pxcor = max-pxcor) and (pycor = max-pycor) [ ; top right
-      set heading random 90 + 180
-      set left-boundry true
-    ] (pxcor = max-pxcor) and (pycor = min-pycor) [ ; bottom right
-      set heading random 90 + 270
-      set left-boundry true
-    ] (abs pxcor = max-pxcor) [
-      set heading (- heading)
-      set left-boundry true
-    ] (abs pycor = max-pycor) [
-      set heading (180 - heading)
-      set left-boundry true
-    ]
-    ; else
-    [
-      ; Set a random heading
-      set heading random 360
-      set left-boundry false
-    ])
+    ; Change the heading of the person, return true if they left the boundry
+    let left-boundry (set-heading self)
 
-    ; Some of the movers will go to the store, can transmit infection there
-    ; Assume the average person goes to the store once a week
-    (ifelse (random-float 1 < 0.14) [
-      set previous-patch patch-here
+    (ifelse (((age <= 18) and (age > 2)) and ((ticks mod 7 != 0) and (ticks mod 7 != 6))) [
+      if (not in-school) [
+        if ((patch-here != previous-patch) and (patch-here != my-school)) [
+          set previous-patch patch-here
+        ]
+        set in-school true
+        move-to my-school
+      ]
+    ] (random-float 1 < .14) [
+      if ((patch-here != previous-patch) and (patch-here != my-school)) [
+        set previous-patch patch-here
+      ]
       set in-store true
       move-to one-of stores
     ] ; else move forward a random distance
     [
       ; If in a store, go back to previous patch
-      (ifelse (in-store) [
+      (ifelse ((in-store) or (in-school)) [
         set in-store false
-          move-to previous-patch
+        set in-school false
+        move-to previous-patch
       ] ; else move randomly
       [
         forward random-float 2 + 1
@@ -124,6 +110,41 @@ to move
   ]
 end
 
+; Set the heading of a person passed as a parameter, return whether they left the boundry
+to-report set-heading [heading-to-be-set]
+  ; Boolean to see if the person could have gotten infected leaving
+  let left-boundry false
+  ; If on a boundry, face away from the boundry, also need to check for corners
+  (ifelse (pxcor = min-pxcor) and (pycor = min-pycor) [ ; bottom left
+    set heading random 90
+    set left-boundry true
+  ] (pxcor = min-pxcor) and (pycor = max-pycor) [ ; top left
+    set heading random 90 + 90
+    set left-boundry true
+  ] (pxcor = max-pxcor) and (pycor = max-pycor) [ ; top right
+    set heading random 90 + 180
+    set left-boundry true
+  ] (pxcor = max-pxcor) and (pycor = min-pycor) [ ; bottom right
+    set heading random 90 + 270
+    set left-boundry true
+  ] (abs pxcor = max-pxcor) [
+    set heading (- heading)
+    set left-boundry true
+  ] (abs pycor = max-pycor) [
+    set heading (180 - heading)
+    set left-boundry true
+  ] ; else
+  [
+    ; Set a random heading
+    set heading random 360
+    set left-boundry false
+  ])
+
+  ; Return whether the person left the boundry or not
+  report left-boundry
+end
+
+; Start the epidemic with the number of exposed people
 to start-epidemic [#exposed]
   ask n-of #exposed people with [epi-status = "susceptible"]
   [
@@ -180,6 +201,14 @@ to transmit-infection
   ]
 end
 
+
+; ===============================================================================================================
+;
+; CHANGE EPI STATUS FUNCTIONS
+;
+; ===============================================================================================================
+
+
 ; Set the status of a person to exposed
 to set-status-exposed
   ; Change the status
@@ -225,6 +254,14 @@ to set-status-dead-or-immune
   set num-infected num-infected - 1
 end
 
+
+; ===============================================================================================================
+;
+; SETUP FUNCTIONS
+;
+; ===============================================================================================================
+
+
 ; Essentially just set the patch color to white
 to setup-patches
   ask patches
@@ -249,15 +286,11 @@ to setup-globals
 end
 
 ; Setup the patches that are stores and schools
-to setup-stores-and-schools
+to setup-stores
   ; Set up the number of each type of grocery store
   let num-retail (total-num / 400)
   let num-resturant (total-num / 500 + 1)
   let num-grocery (total-num / 5000 + 1)
-
-  ; Set up the number of schools (about 1 per 600 kids with at least 1)
-  let num-children count people with [age <= 18]
-  let num-schools (num-children / 600 + 1)
 
   ; Set up the retail stores
   ask n-of num-retail patches with [pcolor = white] [
@@ -277,17 +310,29 @@ to setup-stores-and-schools
     set pcolor green + 2
   ]
 
+  ; Make a set of all the store patches
+  set stores patches with [pcolor = yellow + 2 or pcolor = green + 2 or pcolor = red + 2]
+end
+
+; Assign a random school to each person under 18, must be done after setup-people is complete
+to setup-schools
+  ; Set up the number of schools (about 1 per 600 kids with at least 1)
+  let num-children count people with [age <= 18]
+  let num-schools (num-children / 600 + 1)
+
   ; Set up the schools
   ask n-of num-schools patches with [pcolor = white] [
     set is-school true
     set pcolor violet + 2
   ]
 
-  ; Make a set of all the store patches
-  set stores patches with [pcolor = yellow + 2 or pcolor = green + 2 or pcolor = red + 2]
-
   ; Make a set of all the school patches
   set schools patches with [pcolor = violet + 2]
+
+  ; Assign a school to each child
+  ask people with [age <= 18] [
+    set my-school one-of schools
+  ]
 end
 
 to setup-people
@@ -296,9 +341,12 @@ to setup-people
   create-people total-num
   ask people
   [
-    ; Every person is susceptible
+    ; Setup variables
     set epi-status "susceptible"
     set in-store false
+    set in-school false
+    set previous-patch patch-here
+
     ; Set the color, size, and shape of every person
     set color blue
     set size 0.5
