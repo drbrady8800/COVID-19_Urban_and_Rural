@@ -1,28 +1,48 @@
 globals
 [
-  num-infected
-  total-num
-  stores
+  num-infected              ; total number of people infected
+  total-num                 ; total number of people
+  stores                    ; a set of patches that are stores
+  schools                   ; a set of patches that are schools
+  transmission-liklihood    ; probability of transmission in the same patch
+
+  ; global variables to determine the restrictions on the people
+  social-distancing         ; boolean whether social distancing in mandatory
+  stay-at-home              ; boolean whether stay-at-home is required
+  masks                     ; boolean whether masks are mandatory
+  returnants-mode           ; string: could be takeout, outdoor, or indoor
+  retail-mode               ; string: could be closed, curbside, or open
+  grocery-distanced         ; boolean, if grocery stores are socially distanced or not
+  schools-open              ; boolean, if schools are open
+]
+
+; Variables that identify patch types
+patches-own
+[
+  store-type                ; effects how restrictions treat the store, could be retail, resturant, grocery, or N/A
+  is-school                    ; boolean whether the patch is a school
 ]
 
 ; Allows for the referral of a group of turtles as people, and an individual agent as a person
 breed [people person]
+
+; Variables used to identify people and run simulation
 people-own
 [
-  epi-status      ; current epidemic state
-  when-exposed    ; the tick when the person is exposed
-  age             ; age of person, affects the death-rate
-  death-rate      ; the death rate for the persons age group
-  previous-patch  ; used to keep track of the patch a person was in before going to a store
-  in-store        ; a boolean to determine if the person is in a store
+  epi-status                ; current epidemic state
+  when-exposed              ; the tick when the person is exposed
+  age                       ; age of person, affects the death-rate
+  death-rate                ; the death rate for the persons age group
+  previous-patch            ; used to keep track of the patch a person was in before going to a store
+  in-store                  ; a boolean to determine if the person is in a store
 ]
 
 to setup
   clear-all
-  set total-num pop-density * 5
+  setup-globals
   setup-patches
   setup-people
-  setup-stores
+  setup-stores-and-schools
   reset-ticks
   start-epidemic 1
 ;  calculate-globals
@@ -96,7 +116,7 @@ to move
 
     ; If the person left the boundry, they could have gotten infected
     if (left-boundry) [
-      let prob-infected-outside 0.03 * (num-infected / total-num)
+      let prob-infected-outside transmission-liklihood * (num-infected / total-num)
       if (random-float 1 < prob-infected-outside) [
         set-status-exposed
       ]
@@ -138,7 +158,7 @@ to update-status
 end
 
 ; If infected there is a probability of exposing other people
-; in the same patch (about 120 yds)
+; in the same patch (about 100 yds)
 to transmit-infection
   ; Make a agentset of infectious people
   let transmitters people with [epi-status = "infectious"]
@@ -149,7 +169,7 @@ to transmit-infection
     ask people-here with [epi-status = "susceptible"]
     [
       ; Set the probablity of infection to some number
-      let prob-infect 0.03
+      let prob-infect transmission-liklihood
 
       ; If the person is infected change their epi-status
       if random-float 1 < prob-infect
@@ -165,7 +185,7 @@ to set-status-exposed
   ; Change the status
   set epi-status "exposed"
   ; Change the appearance to exposed
-  set color orange + 1
+  set color orange
   set size 0.7
   set shape "dot"
   set when-exposed ticks
@@ -176,7 +196,7 @@ to set-status-infected
   ; Actually change the status
   set epi-status "infectious"
   ; Change the look of the peson to make it obvious they are infected
-  set color red + 1
+  set color red
   set size 1
   set shape "dot"
   set when-exposed ticks
@@ -197,7 +217,7 @@ to set-status-dead-or-immune
     ; Change the epi-status
     set epi-status "immune"
     ; Change the look of the person to make it obvious immune
-    set color green + 1
+    set color green
     set size 0.5
     set shape "square"
   ])
@@ -210,7 +230,64 @@ to setup-patches
   ask patches
   [
     set pcolor white
+    set store-type "N/A"
+    set is-school false
   ]
+end
+
+; Declare the initial values of global variables
+to setup-globals
+  set total-num pop-density * 5
+  set transmission-liklihood 0.05
+  set social-distancing false
+  set stay-at-home false
+  set masks false
+  set returnants-mode "indoor"
+  set retail-mode "open"
+  set grocery-distanced false
+  set schools-open true
+end
+
+; Setup the patches that are stores and schools
+to setup-stores-and-schools
+  ; Set up the number of each type of grocery store
+  let num-retail (total-num / 400)
+  let num-resturant (total-num / 500 + 1)
+  let num-grocery (total-num / 5000 + 1)
+
+  ; Set up the number of schools (about 1 per 600 kids with at least 1)
+  let num-children count people with [age <= 18]
+  let num-schools (num-children / 600 + 1)
+
+  ; Set up the retail stores
+  ask n-of num-retail patches with [pcolor = white] [
+    set store-type "retail"
+    set pcolor yellow + 2
+  ]
+
+  ; Set up the resturants
+  ask n-of num-resturant patches with [pcolor = white] [
+    set store-type "resturant"
+    set pcolor red + 2
+  ]
+
+  ; Set up the grocery stores
+  ask n-of num-grocery patches with [pcolor = white] [
+    set store-type "grocery"
+    set pcolor green + 2
+  ]
+
+  ; Set up the schools
+  ask n-of num-schools patches with [pcolor = white] [
+    set is-school true
+    set pcolor violet + 2
+  ]
+
+  ; Make a set of all the store patches
+  set stores patches with [pcolor = yellow + 2 or pcolor = green + 2 or pcolor = red + 2]
+
+  ; Make a set of all the school patches
+  set schools patches with [pcolor = violet + 2]
 end
 
 to setup-people
@@ -282,25 +359,15 @@ to setup-people
     set death-rate 0.16
   ]
 end
-
-to setup-stores
-  ; Set the number of stores to be one store per 250 people
-  ; This makes it one store at the smallest population density and 84 at the highest
-  let num-stores (total-num / 300 + 1)
-  ask n-of num-stores patches [
-    set pcolor yellow
-  ]
-  set stores patches with [pcolor = yellow]
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-647
-448
+628
+429
 -1
 -1
-13.0
+10.0
 1
 10
 1
@@ -310,10 +377,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--16
-16
--16
-16
+-20
+20
+-20
+20
 1
 1
 1
@@ -346,7 +413,7 @@ pop-density
 pop-density
 50
 5000
-1500.0
+1750.0
 10
 1
 people/sq. mile
@@ -563,6 +630,16 @@ count people with [epi-status = \"dead\"]
 17
 1
 11
+
+CHOOSER
+211
+455
+349
+500
+restriction-type
+restriction-type
+"Virginia" "New York" "California" "Florida" "Custom"
+0
 
 @#$#@#$#@
 ## WHAT IS IT?
