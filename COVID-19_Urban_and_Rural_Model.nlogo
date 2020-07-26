@@ -2,7 +2,9 @@ globals
 [
   num-infected              ; total number of people infected
   total-num                 ; total number of people
-  stores                    ; a set of patches that are stores
+  retail-stores             ; a set of patches that are retail stores
+  resturants                ; a set of patches that are resturants
+  grocery-stores             ; a set of patches that are grpcery stores
   schools                   ; a set of patches that are schools
   transmission-liklihood    ; probability of transmission in the same patch
 
@@ -10,7 +12,7 @@ globals
   social-distancing         ; boolean whether social distancing in mandatory
   stay-at-home              ; boolean whether stay-at-home is required
   masks                     ; boolean whether masks are mandatory
-  returnants-mode           ; string: could be takeout, outdoor, or indoor
+  resturant-mode            ; string: could be takeout, outdoor, or indoor
   retail-mode               ; string: could be closed, curbside, or open
   grocery-distanced         ; boolean, if grocery stores are socially distanced or not
   schools-open              ; boolean, if schools are open
@@ -20,7 +22,8 @@ globals
 patches-own
 [
   store-type                ; effects how restrictions treat the store, could be retail, resturant, grocery, or N/A
-  is-school                    ; boolean whether the patch is a school
+  is-school                 ; boolean whether the patch is a school
+  max-capacity              ; the maximum number of people allowed in the store
 ]
 
 ; Allows for the referral of a group of turtles as people, and an individual agent as a person
@@ -37,6 +40,7 @@ people-own
   in-store                  ; a boolean to determine if the person is in a store
   in-school                 ; a boolean to determine if the person is in a school
   my-school                 ; if a child, the patch the person goes to school
+  at-home                   ; if the person is at home (won't get the virus)
 ]
 
 to setup
@@ -48,17 +52,34 @@ to setup
   setup-schools
   reset-ticks
   start-epidemic 1
-;  calculate-globals
 end
 
 to go
   ; Check if still any infectious
   ; if all? people [epi-status = "susceptible" or epi-status = "immune" or epi-status = "dead"] [stop]
+  new-york-restrictions
   move
   update-status
   transmit-infection
   tick
 end
+
+
+; Start the epidemic with the number of exposed people
+to start-epidemic [#exposed]
+  ask n-of #exposed people with [epi-status = "susceptible"]
+  [
+    set-status-exposed
+  ]
+end
+
+
+; ===============================================================================================================
+;
+; MOVE FUNCTIONS
+;
+; ===============================================================================================================
+
 
 ; Moves specified proportion of people in a random direction
 ; If they hit a boundry turn the away so they do not gather at boudries
@@ -73,35 +94,25 @@ to move
     ; Change the heading of the person, return true if they left the boundry
     let left-boundry (set-heading self)
 
-    (ifelse (((age <= 18) and (age > 2)) and ((ticks mod 7 != 0) and (ticks mod 7 != 6))) [
-      if (not in-school) [
-        if ((patch-here != previous-patch) and (patch-here != my-school)) [
-          set previous-patch patch-here
-        ]
-        set in-school true
-        move-to my-school
-      ]
-    ] (random-float 1 < .14) [
-      if ((patch-here != previous-patch) and (patch-here != my-school)) [
-        set previous-patch patch-here
-      ]
-      set in-store true
-      move-to one-of stores
-    ] ; else move forward a random distance
-    [
-      ; If in a store, go back to previous patch
-      (ifelse ((in-store) or (in-school)) [
-        set in-store false
-        set in-school false
-        move-to previous-patch
+    ; Let some people go out to stores or school, return if they went out
+    let went-out (go-out self)
+
+    ; If they didn't go out move forward or not at all
+    (ifelse (not went-out) [
+      (ifelse (stay-at-home and (random-float 1 < .9)) [
+        set at-home true
       ] ; else move randomly
       [
+        set at-home false
         forward random-float 2 + 1
       ])
+    ] ; else set at-home false
+    [
+      set at-home false
     ])
 
     ; If the person left the boundry, they could have gotten infected
-    if (left-boundry) [
+    if (left-boundry and (not at-home)) [
       let prob-infected-outside transmission-liklihood * (num-infected / total-num)
       if (random-float 1 < prob-infected-outside) [
         set-status-exposed
@@ -144,13 +155,126 @@ to-report set-heading [heading-to-be-set]
   report left-boundry
 end
 
-; Start the epidemic with the number of exposed people
-to start-epidemic [#exposed]
-  ask n-of #exposed people with [epi-status = "susceptible"]
+; Lets a person go out (to school, grocery store, retail, or resturant) if they meet
+; certain criteria, returns a boolean of if they went out
+to-report go-out [to-go-out]
+  ; to return: whether the turtle went out or not
+  let to-return false
+
+  ; If the person is a child, it is not a weekend and schools are open go to school
+  (ifelse (((age <= 18) and (age > 2)) and ((ticks mod 7 != 0) and (ticks mod 7 != 6)) and (schools-open)) [
+    ; If not in school go to school
+    if (not in-school) [
+      ; If the child is not at school and not in the same patch as its previous set its
+      ; previous patch to its current patch
+      if ((patch-here != previous-patch) and (patch-here != my-school)) [
+        set previous-patch patch-here
+      ]
+      set in-school true
+      move-to my-school
+    ]
+    set to-return true
+  ] ((in-store) or (in-school)) [ ; If in a store or school go home
+    set in-store false
+    set in-school false
+    move-to previous-patch
+    set at-home true
+  ] (random-float 1 < .28) [ ; go out on average twice a week per person
+    ; If the person went out set the value to true
+    set to-return (go-to-a-store self)
+  ])
+  ; Report if the person went out
+  report to-return
+end
+
+;
+to-report go-to-a-store [goer-to-store]
+  ; to-return: whether the person was able to go to a store (full capacity or not)
+  let to-return false
+
+  ; determine what kind of store the person will go to
+  let which-store-type random-float 1
+
+  ; the actual patch / store that the person will go to
+  let the-store patch-here
+
+  ; set the type of store to go to if they are not closed
+  (ifelse ((which-store-type <= .33) and (retail-mode != "closed") and (total-num > 400)) [
+    set the-store one-of retail-stores
+  ] ((which-store-type <= .66) and (which-store-type > .33) and (resturant-mode != "takeout")) [
+    set the-store one-of resturants
+  ] (which-store-type > .66) [
+    set the-store one-of grocery-stores
+  ] ; else exit
   [
-    set-status-exposed
+    report false
+  ])
+
+  let current-capacity (count people-on the-store)
+
+
+  ; If the store is under capacity the person can go to it, otherwise it does nothing
+  if (current-capacity <= ([max-capacity] of the-store)) [
+    if ((patch-here != previous-patch) and (patch-here != my-school)) [
+      set previous-patch patch-here
+    ]
+    set in-store true
+    move-to the-store
+    set to-return true
+  ]
+  ; Report whether the person went out
+  report to-return
+end
+
+; If infected there is a probability of exposing other people
+; in the same patch (about 100 yds)
+to transmit-infection
+  ; Make a agentset of infectious people
+  let transmitters people with [epi-status = "infectious"]
+
+  ask transmitters
+  [
+    ; All people that are susceptible in transmitters' patches
+    ask people-here with [epi-status = "susceptible" and (not at-home)]
+    [
+      ; Set the probablity of infection to some number
+      let prob-infect transmission-liklihood
+
+      ; If the person is in a store and it is distanced, transmission is low
+      if (([store-type] of patch-here = "grocery") and grocery-distanced) [
+        set prob-infect (prob-infect - .02)
+      ]
+
+      ; If the person is infected change their epi-status
+      if random-float 1 < prob-infect
+      [
+        set-status-infected
+      ]
+    ]
   ]
 end
+
+to adjust-transmission-prob
+  ; reset the probablity back to .09 and adjust from there
+  let new-prob .09
+
+  if (masks) [
+    set new-prob (new-prob - .03)
+  ]
+
+  if (social-distancing) [
+    set new-prob (new-prob - .03)
+  ]
+
+  set transmission-liklihood new-prob
+end
+
+; ===============================================================================================================
+;
+; CHANGE EPI STATUS FUNCTIONS
+;
+; ===============================================================================================================
+
 
 ; If it has been 7-21 days since infection set the status to immune
 ; If it has been 2-14 days after exposure set the status to infectious
@@ -177,37 +301,6 @@ to update-status
     ]
   ]
 end
-
-; If infected there is a probability of exposing other people
-; in the same patch (about 100 yds)
-to transmit-infection
-  ; Make a agentset of infectious people
-  let transmitters people with [epi-status = "infectious"]
-
-  ask transmitters
-  [
-    ; All people that are susceptible in transmitters' patches
-    ask people-here with [epi-status = "susceptible"]
-    [
-      ; Set the probablity of infection to some number
-      let prob-infect transmission-liklihood
-
-      ; If the person is infected change their epi-status
-      if random-float 1 < prob-infect
-      [
-        set-status-infected
-      ]
-    ]
-  ]
-end
-
-
-; ===============================================================================================================
-;
-; CHANGE EPI STATUS FUNCTIONS
-;
-; ===============================================================================================================
-
 
 ; Set the status of a person to exposed
 to set-status-exposed
@@ -257,6 +350,34 @@ end
 
 ; ===============================================================================================================
 ;
+; STATE RESTRICTION FUNCTIONS
+;
+; ===============================================================================================================
+
+to new-york-restrictions
+  ; start of lockdown state-wide
+  (ifelse (ticks = 9) [
+    set masks true
+    set stay-at-home true
+    set social-distancing true
+    set resturant-mode "takeout"
+    set retail-mode "closed"
+    set grocery-distanced true
+    set schools-open false
+
+    ; Ask all people in a school or store to go home
+    ask people with [in-school = true or in-store = true]
+    [
+      set in-store false
+      set in-school false
+      move-to previous-patch
+    ]
+    adjust-transmission-prob
+  ])
+end
+
+; ===============================================================================================================
+;
 ; SETUP FUNCTIONS
 ;
 ; ===============================================================================================================
@@ -275,11 +396,11 @@ end
 ; Declare the initial values of global variables
 to setup-globals
   set total-num pop-density * 5
-  set transmission-liklihood 0.05
+  set transmission-liklihood 0.09
   set social-distancing false
   set stay-at-home false
   set masks false
-  set returnants-mode "indoor"
+  set resturant-mode "indoor"
   set retail-mode "open"
   set grocery-distanced false
   set schools-open true
@@ -296,22 +417,27 @@ to setup-stores
   ask n-of num-retail patches with [pcolor = white] [
     set store-type "retail"
     set pcolor yellow + 2
+    set max-capacity (total-num / num-retail / 5)
   ]
 
   ; Set up the resturants
   ask n-of num-resturant patches with [pcolor = white] [
     set store-type "resturant"
     set pcolor red + 2
+    set max-capacity (total-num / num-resturant / 5)
   ]
 
   ; Set up the grocery stores
   ask n-of num-grocery patches with [pcolor = white] [
     set store-type "grocery"
     set pcolor green + 2
+    set max-capacity (total-num / num-grocery / 10)
   ]
 
-  ; Make a set of all the store patches
-  set stores patches with [pcolor = yellow + 2 or pcolor = green + 2 or pcolor = red + 2]
+  ; Make a set of all the retail, resturant, and grocery patches
+  set retail-stores patches with [pcolor = yellow + 2]
+  set resturants patches with [pcolor = red + 2]
+  set grocery-stores patches with [pcolor = green + 2]
 end
 
 ; Assign a random school to each person under 18, must be done after setup-people is complete
@@ -346,6 +472,7 @@ to setup-people
     set in-store false
     set in-school false
     set previous-patch patch-here
+    set at-home false
 
     ; Set the color, size, and shape of every person
     set color blue
