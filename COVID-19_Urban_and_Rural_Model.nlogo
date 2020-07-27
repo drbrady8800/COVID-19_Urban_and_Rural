@@ -99,7 +99,7 @@ to move
 
     ; If they didn't go out move forward or not at all
     (ifelse (not went-out) [
-      (ifelse (stay-at-home and (random-float 1 < .9)) [
+      (ifelse (stay-at-home and (random-float 1 < .6)) [
         set at-home true
       ] ; else move randomly
       [
@@ -235,7 +235,8 @@ to transmit-infection
   ask transmitters
   [
     ; All people that are susceptible in transmitters' patches
-    ask people-here with [epi-status = "susceptible" and (not at-home)]
+    let people-in-patch (people-here with [epi-status = "susceptible" and (not at-home)])
+    ask n-of ((count people-in-patch) / 2) people-in-patch ; Only 1/2 of people in the patch can get infected
     [
       ; Set the probablity of infection to some number
       let prob-infect transmission-liklihood
@@ -588,17 +589,17 @@ pop-density
 pop-density
 50
 5000
-1750.0
+1780.0
 10
 1
 people/sq. mile
 HORIZONTAL
 
 BUTTON
-100
-30
-163
-63
+104
+28
+167
+61
 NIL
 go
 T
@@ -633,10 +634,10 @@ PENS
 "deceased" 1.0 0 -7500403 true "" "plot (count people with [epi-status =\n\"dead\"] / total-num) * 100"
 
 MONITOR
-679
-241
-858
-286
+659
+414
+817
+459
 Number of people susceptible 
 count people with [epi-status = \"susceptible\"]
 0
@@ -644,10 +645,10 @@ count people with [epi-status = \"susceptible\"]
 11
 
 MONITOR
-677
-300
-836
-345
+658
+471
+817
+516
 Number of people infected
 count people with [epi-status = \"infectious\" or\nepi-status = \"exposed\"]
 17
@@ -655,10 +656,10 @@ count people with [epi-status = \"infectious\" or\nepi-status = \"exposed\"]
 11
 
 MONITOR
-678
-372
-849
-417
+893
+470
+1060
+515
 Number of people recovered
 count people with [epi-status = \"immune\"]
 0
@@ -796,10 +797,10 @@ eighty-plus-pct
 HORIZONTAL
 
 MONITOR
-910
-243
-1077
-288
+894
+413
+1061
+458
 Number of people deceased
 count people with [epi-status = \"dead\"]
 17
@@ -815,6 +816,24 @@ restriction-type
 restriction-type
 "Virginia" "New York" "California" "Florida" "Custom"
 0
+
+PLOT
+674
+246
+1048
+396
+Number of Infected
+Time (days)
+Number of People
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Infected" 1.0 0 -955883 true "" "plot count people with [epi-status\n= \"infectious\" or epi-status = \"exposed\"]"
 
 @#$#@#$#@
 ## WHAT IS IT?
