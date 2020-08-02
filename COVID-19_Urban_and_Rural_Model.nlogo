@@ -1,12 +1,14 @@
 globals
 [
-  num-infected              ; total number of people infected
+  num-infected              ; total number of people infected at any one time
+  total-num-infected        ; total number of people infected
   total-num                 ; total number of people
   retail-stores             ; a set of patches that are retail stores
   resturants                ; a set of patches that are resturants
   grocery-stores             ; a set of patches that are grpcery stores
   schools                   ; a set of patches that are schools
   transmission-liklihood    ; probability of transmission in the same patch
+  infections-today          ; new infections on a given day
 
   ; global variables to determine the restrictions on the people
   social-distancing         ; boolean whether social distancing in mandatory
@@ -16,6 +18,13 @@ globals
   retail-mode               ; string: could be closed, curbside, or open
   grocery-distanced         ; boolean, if grocery stores are socially distanced or not
   schools-open              ; boolean, if schools are open
+
+  ; variables to play with to refine algorithm
+  percent-people-interacted ; % of people in a patch that the infected interacted with
+  percent-moving            ; % of people who move against stay-at-home
+  initial-prob-trans        ; original probablity of transmission
+  grocery-trans-factor      ; How much safer is grocery store than normal interactions
+  store-frequency           ; How often people go to a store
 ]
 
 ; Variables that identify patch types
@@ -51,12 +60,14 @@ to setup
   setup-people
   setup-schools
   reset-ticks
-  start-epidemic 1
+  ; Start the epidemic with x amount of initial infections
+  start-epidemic (1 + total-num / 4000)
 end
 
 to go
   ; Check if still any infectious
   ; if all? people [epi-status = "susceptible" or epi-status = "immune" or epi-status = "dead"] [stop]
+  set infections-today 0
   new-york-restrictions
   move
   update-status
@@ -99,7 +110,7 @@ to move
 
     ; If they didn't go out move forward or not at all
     (ifelse (not went-out) [
-      (ifelse (stay-at-home and (random-float 1 < .6)) [
+      (ifelse (stay-at-home and (random-float 1 < percent-moving )) [
         set at-home true
       ] ; else move randomly
       [
@@ -162,7 +173,9 @@ to-report go-out [to-go-out]
   let to-return false
 
   ; If the person is a child, it is not a weekend and schools are open go to school
-  (ifelse (((age <= 18) and (age > 2)) and ((ticks mod 7 != 0) and (ticks mod 7 != 6)) and (schools-open)) [
+  (ifelse (((age <= 18) and (age > 2)) ; if they are children
+    and ((ticks mod 7 != 0) and (ticks mod 7 != 6)) ; if its not a weekend
+    and (schools-open) and ((ticks < 93) or (ticks > 170))) [ ; if its not the summer
     ; If not in school go to school
     if (not in-school) [
       ; If the child is not at school and not in the same patch as its previous set its
@@ -179,7 +192,7 @@ to-report go-out [to-go-out]
     set in-school false
     move-to previous-patch
     set at-home true
-  ] (random-float 1 < .28) [ ; go out on average twice a week per person
+  ] (random-float 1 < store-frequency) [ ; go out on average twice a week per person
     ; If the person went out set the value to true
     set to-return (go-to-a-store self)
   ])
@@ -195,11 +208,11 @@ to-report go-to-a-store [goer-to-store]
   ; determine what kind of store the person will go to
   let which-store-type random-float 1
 
-  ; the actual patch / store that the person will go to
+  ; the actual patch / store that the person will go to, preliminarily set to current patch
   let the-store patch-here
 
   ; set the type of store to go to if they are not closed
-  (ifelse ((which-store-type <= .33) and (retail-mode != "closed") and (total-num > 400)) [
+  (ifelse ((which-store-type <= .33) and ((retail-mode != "closed") and (retail-mode != "curbside")) and (total-num > 400)) [
     set the-store one-of retail-stores
   ] ((which-store-type <= .66) and (which-store-type > .33) and (resturant-mode != "takeout")) [
     set the-store one-of resturants
@@ -210,8 +223,8 @@ to-report go-to-a-store [goer-to-store]
     report false
   ])
 
+  ; See how many people are already in the store
   let current-capacity (count people-on the-store)
-
 
   ; If the store is under capacity the person can go to it, otherwise it does nothing
   if (current-capacity <= ([max-capacity] of the-store)) [
@@ -236,14 +249,14 @@ to transmit-infection
   [
     ; All people that are susceptible in transmitters' patches
     let people-in-patch (people-here with [epi-status = "susceptible" and (not at-home)])
-    ask n-of ((count people-in-patch) / 2) people-in-patch ; Only 1/2 of people in the patch can get infected
+    ask n-of ((count people-in-patch) * percent-people-interacted) people-in-patch ; Only 1/2 of people in the patch can get infected
     [
       ; Set the probablity of infection to some number
       let prob-infect transmission-liklihood
 
-      ; If the person is in a store and it is distanced, transmission is low
+      ; If the person is in a grocery store and it is distanced, transmission is low
       if (([store-type] of patch-here = "grocery") and grocery-distanced) [
-        set prob-infect (prob-infect - .02)
+        set prob-infect (prob-infect - (initial-prob-trans * grocery-trans-factor))
       ]
 
       ; If the person is infected change their epi-status
@@ -256,15 +269,15 @@ to transmit-infection
 end
 
 to adjust-transmission-prob
-  ; reset the probablity back to .09 and adjust from there
-  let new-prob .09
+  ; reset the probablity back to .06 and adjust from there
+  let new-prob initial-prob-trans
 
   if (masks) [
-    set new-prob (new-prob - .03)
+    set new-prob (new-prob - .02)
   ]
 
   if (social-distancing) [
-    set new-prob (new-prob - .03)
+    set new-prob (new-prob - .02)
   ]
 
   set transmission-liklihood new-prob
@@ -325,6 +338,10 @@ to set-status-infected
   set when-exposed ticks
   ; Change the total number of infected to plus one
   set num-infected num-infected + 1
+  ; Increase the new infection counter
+  set infections-today (infections-today + 1)
+  ; Increse the total infections counter over all time
+  set total-num-infected (total-num-infected + 1)
 end
 
 to set-status-dead-or-immune
@@ -356,7 +373,7 @@ end
 ; ===============================================================================================================
 
 to new-york-restrictions
-  ; start of lockdown state-wide
+  ; start of lockdown state-wide (March 22nd)
   (ifelse (ticks = 9) [
     set masks true
     set stay-at-home true
@@ -373,7 +390,29 @@ to new-york-restrictions
       set in-school false
       move-to previous-patch
     ]
+    ; Adjust the transmission probablity
     adjust-transmission-prob
+  ] (ticks = 65) [ ; Phase 1: May 26th for most counties, only change is curbside retail
+    set retail-mode "curbside"
+  ] (ticks = 79) [ ; Phase 2: June 9th for most counties, resturants are outdoor, retail open
+    set resturant-mode "outdoor"
+    set retail-mode "open"
+
+    ; Change the seating capacities of resturants and retail
+    ask patches with [store-type = "resturant" or store-type = "retail"] [
+      ; set capacity to 1/4 of normal capactiy
+      set max-capacity (max-capacity / 4)
+    ]
+  ] (ticks = 93) [ ; Phase 3: June 23rd for most counties, resturants are indoor
+    set resturant-mode "indoor"
+
+    ; Change max capacity of resturants and retail
+    ask patches with [store-type = "resturant" or store-type = "retail"] [
+      ; set capacity to 1/2 of normal capactiy
+      set max-capacity (max-capacity * 2)
+    ]
+  ] (ticks = 107) [ ; Phase 4: July 7th for most counties, schools open back up
+    set schools-open true
   ])
 end
 
@@ -396,8 +435,15 @@ end
 
 ; Declare the initial values of global variables
 to setup-globals
+  ; Varaibles to manipulate and test
+  set percent-people-interacted .5
+  set percent-moving 0.8
+  set initial-prob-trans 0.06
+  set grocery-trans-factor 0.25
+  set store-frequency 0.28
+
   set total-num pop-density * 5
-  set transmission-liklihood 0.09
+  set transmission-liklihood initial-prob-trans
   set social-distancing false
   set stay-at-home false
   set masks false
@@ -589,7 +635,7 @@ pop-density
 pop-density
 50
 5000
-1780.0
+1880.0
 10
 1
 people/sq. mile
@@ -822,9 +868,9 @@ PLOT
 246
 1048
 396
-Number of Infected
+New Cases
 Time (days)
-Number of People
+Number of Cases
 0.0
 10.0
 0.0
@@ -833,7 +879,18 @@ true
 true
 "" ""
 PENS
-"Infected" 1.0 0 -955883 true "" "plot count people with [epi-status\n= \"infectious\" or epi-status = \"exposed\"]"
+"Infected" 1.0 1 -955883 true "" "plot infections-today"
+
+MONITOR
+763
+535
+952
+580
+Total number of people infected
+total-num-infected
+0
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
