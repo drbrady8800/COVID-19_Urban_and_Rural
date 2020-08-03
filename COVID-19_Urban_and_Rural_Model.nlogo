@@ -14,8 +14,8 @@ globals
   social-distancing         ; boolean whether social distancing in mandatory
   stay-at-home              ; boolean whether stay-at-home is required
   masks                     ; boolean whether masks are mandatory
-  resturant-mode            ; string: could be takeout, outdoor, or indoor
-  retail-mode               ; string: could be closed, curbside, or open
+  resturant-mode            ; string: could be takeout, outdoor, indoor (half capacity), or full capacity
+  retail-mode               ; string: could be closed, curbside, open (half capacity), or full capacity
   grocery-distanced         ; boolean, if grocery stores are socially distanced or not
   schools-open              ; boolean, if schools are open
 
@@ -68,7 +68,20 @@ to go
   ; Check if still any infectious
   ; if all? people [epi-status = "susceptible" or epi-status = "immune" or epi-status = "dead"] [stop]
   set infections-today 0
-  new-york-restrictions
+
+  ; Determine which restrictions to use
+  (ifelse (restriction-type = "Virginia") [
+    virginia-restrictions
+  ] (restriction-type = "California") [
+    california-restrictions
+  ] (restriction-type = "New York") [
+    new-york-restrictions
+  ] (restriction-type = "Florida") [
+    florida-restrictions
+  ] ; else
+  [
+    custom-restrictions
+  ])
   move
   update-status
   transmit-infection
@@ -273,11 +286,11 @@ to adjust-transmission-prob
   let new-prob initial-prob-trans
 
   if (masks) [
-    set new-prob (new-prob - .02)
+    set new-prob (new-prob - (initial-prob-trans / 3))
   ]
 
   if (social-distancing) [
-    set new-prob (new-prob - .02)
+    set new-prob (new-prob - (initial-prob-trans / 3))
   ]
 
   set transmission-liklihood new-prob
@@ -416,6 +429,192 @@ to new-york-restrictions
   ])
 end
 
+to virginia-restrictions
+  ; start of lockdown state-wide (April 1st)
+  (ifelse (ticks = 9) [
+    set masks true
+    set stay-at-home true
+    set social-distancing true
+    set resturant-mode "takeout"
+    set retail-mode "curbside"
+    set grocery-distanced true
+    set schools-open false
+
+    ; Ask all people in a school or store to go home
+    ask people with [in-school = true or in-store = true]
+    [
+      set in-store false
+      set in-school false
+      move-to previous-patch
+    ]
+    ; Adjust the transmission probablity
+    adjust-transmission-prob
+  ] (ticks = 54) [ ; Phase 1: May 15th for most counties, open retail and resturants
+    set retail-mode "open"
+    set resturant-mode "outdoor"
+
+    ; Change the seating capacities of resturants and retail
+    ask patches with [store-type = "resturant" or store-type = "retail"] [
+      ; set capacity to 1/4 of normal capactiy
+      (ifelse (store-type = "resturant") [
+        set max-capacity (max-capacity / 4) ; outdoor seating
+      ] ; else
+      [
+        set max-capacity (max-capacity / 2)
+      ])
+
+    ]
+  ] (ticks = 82) [ ; Phase 2: June 12th for most counties, resturants are indoor
+    set resturant-mode "indoor"
+
+    ; Change the seating capacities of resturants
+    ask patches with [store-type = "resturant"] [
+      ; set capacity to 1/4 of normal capactiy
+      set max-capacity (max-capacity * 2)
+    ]
+  ] (ticks = 93) [ ; Phase 3: July 1st for most counties, increased capacities
+    set resturant-mode "indoor"
+
+    ; Change max capacity of resturants and retail
+    ask patches with [store-type = "resturant" or store-type = "retail"] [
+      ; set capacity to 3/4 of normal capactiy
+      set max-capacity (max-capacity * 1.5)
+    ]
+  ])
+end
+
+to california-restrictions
+  ; start of lockdown state-wide (March 22nd)
+  (ifelse (ticks = 9) [
+    set masks true
+    set stay-at-home true
+    set social-distancing true
+    set resturant-mode "takeout"
+    set retail-mode "closed"
+    set grocery-distanced true
+    set schools-open false
+
+    ; Ask all people in a school or store to go home
+    ask people with [in-school = true or in-store = true]
+    [
+      set in-store false
+      set in-school false
+      move-to previous-patch
+    ]
+    ; Adjust the transmission probablity
+    adjust-transmission-prob
+  ] (ticks = 65) [ ; Phase 1: May 26th for most counties, only change is curbside retail
+    set retail-mode "curbside"
+  ] (ticks = 79) [ ; Phase 2: June 9th for most counties, resturants are outdoor, retail open
+    set resturant-mode "outdoor"
+    set retail-mode "open"
+
+    ; Change the seating capacities of resturants and retail
+    ask patches with [store-type = "resturant" or store-type = "retail"] [
+      ; set capacity to 1/4 of normal capactiy
+      set max-capacity (max-capacity / 4)
+    ]
+  ] (ticks = 93) [ ; Phase 3: June 23rd for most counties, resturants are indoor
+    set resturant-mode "indoor"
+
+    ; Change max capacity of resturants and retail
+    ask patches with [store-type = "resturant" or store-type = "retail"] [
+      ; set capacity to 1/2 of normal capactiy
+      set max-capacity (max-capacity * 2)
+    ]
+  ] (ticks = 107) [ ; Phase 4: July 7th for most counties, schools open back up
+    set schools-open true
+  ])
+end
+
+to florida-restrictions
+  ; start of lockdown state-wide (March 22nd)
+  (ifelse (ticks = 9) [
+    set masks true
+    set stay-at-home true
+    set social-distancing true
+    set resturant-mode "takeout"
+    set retail-mode "closed"
+    set grocery-distanced true
+    set schools-open false
+
+    ; Ask all people in a school or store to go home
+    ask people with [in-school = true or in-store = true]
+    [
+      set in-store false
+      set in-school false
+      move-to previous-patch
+    ]
+    ; Adjust the transmission probablity
+    adjust-transmission-prob
+  ] (ticks = 65) [ ; Phase 1: May 26th for most counties, only change is curbside retail
+    set retail-mode "curbside"
+  ] (ticks = 79) [ ; Phase 2: June 9th for most counties, resturants are outdoor, retail open
+    set resturant-mode "outdoor"
+    set retail-mode "open"
+
+    ; Change the seating capacities of resturants and retail
+    ask patches with [store-type = "resturant" or store-type = "retail"] [
+      ; set capacity to 1/4 of normal capactiy
+      set max-capacity (max-capacity / 4)
+    ]
+  ] (ticks = 93) [ ; Phase 3: June 23rd for most counties, resturants are indoor
+    set resturant-mode "indoor"
+
+    ; Change max capacity of resturants and retail
+    ask patches with [store-type = "resturant" or store-type = "retail"] [
+      ; set capacity to 1/2 of normal capactiy
+      set max-capacity (max-capacity * 2)
+    ]
+  ] (ticks = 107) [ ; Phase 4: July 7th for most counties, schools open back up
+    set schools-open true
+  ])
+end
+
+to custom-restrictions
+  ; start of lockdown state-wide (March 22nd)
+  (ifelse (ticks = 9) [
+    set masks true
+    set stay-at-home true
+    set social-distancing true
+    set resturant-mode "takeout"
+    set retail-mode "closed"
+    set grocery-distanced true
+    set schools-open false
+
+    ; Ask all people in a school or store to go home
+    ask people with [in-school = true or in-store = true]
+    [
+      set in-store false
+      set in-school false
+      move-to previous-patch
+    ]
+    ; Adjust the transmission probablity
+    adjust-transmission-prob
+  ] (ticks = 65) [ ; Phase 1: May 26th for most counties, only change is curbside retail
+    set retail-mode "curbside"
+  ] (ticks = 79) [ ; Phase 2: June 9th for most counties, resturants are outdoor, retail open
+    set resturant-mode "outdoor"
+    set retail-mode "open"
+
+    ; Change the seating capacities of resturants and retail
+    ask patches with [store-type = "resturant" or store-type = "retail"] [
+      ; set capacity to 1/4 of normal capactiy
+      set max-capacity (max-capacity / 4)
+    ]
+  ] (ticks = 93) [ ; Phase 3: June 23rd for most counties, resturants are indoor
+    set resturant-mode "indoor"
+
+    ; Change max capacity of resturants and retail
+    ask patches with [store-type = "resturant" or store-type = "retail"] [
+      ; set capacity to 1/2 of normal capactiy
+      set max-capacity (max-capacity * 2)
+    ]
+  ] (ticks = 107) [ ; Phase 4: July 7th for most counties, schools open back up
+    set schools-open true
+  ])
+end
+
 ; ===============================================================================================================
 ;
 ; SETUP FUNCTIONS
@@ -436,8 +635,8 @@ end
 ; Declare the initial values of global variables
 to setup-globals
   ; Varaibles to manipulate and test
-  set percent-people-interacted .5
-  set percent-moving 0.8
+  set percent-people-interacted .66
+  set percent-moving 0.65
   set initial-prob-trans 0.06
   set grocery-trans-factor 0.25
   set store-frequency 0.28
@@ -447,8 +646,8 @@ to setup-globals
   set social-distancing false
   set stay-at-home false
   set masks false
-  set resturant-mode "indoor"
-  set retail-mode "open"
+  set resturant-mode "full capacity"
+  set retail-mode "full capacity"
   set grocery-distanced false
   set schools-open true
 end
@@ -464,14 +663,14 @@ to setup-stores
   ask n-of num-retail patches with [pcolor = white] [
     set store-type "retail"
     set pcolor yellow + 2
-    set max-capacity (total-num / num-retail / 5)
+    set max-capacity (total-num / num-retail / 7)
   ]
 
   ; Set up the resturants
   ask n-of num-resturant patches with [pcolor = white] [
     set store-type "resturant"
     set pcolor red + 2
-    set max-capacity (total-num / num-resturant / 5)
+    set max-capacity (total-num / num-resturant / 7)
   ]
 
   ; Set up the grocery stores
@@ -635,7 +834,7 @@ pop-density
 pop-density
 50
 5000
-1880.0
+2280.0
 10
 1
 people/sq. mile
@@ -659,10 +858,10 @@ NIL
 1
 
 PLOT
-675
-44
-1047
-227
+1102
+24
+1474
+207
 Population
 Time (days)
 Percentage of People
@@ -680,10 +879,10 @@ PENS
 "deceased" 1.0 0 -7500403 true "" "plot (count people with [epi-status =\n\"dead\"] / total-num) * 100"
 
 MONITOR
-659
-414
-817
-459
+11
+152
+196
+197
 Number of people susceptible 
 count people with [epi-status = \"susceptible\"]
 0
@@ -691,10 +890,10 @@ count people with [epi-status = \"susceptible\"]
 11
 
 MONITOR
-658
-471
-817
-516
+12
+208
+194
+253
 Number of people infected
 count people with [epi-status = \"infectious\" or\nepi-status = \"exposed\"]
 17
@@ -702,10 +901,10 @@ count people with [epi-status = \"infectious\" or\nepi-status = \"exposed\"]
 11
 
 MONITOR
-893
-470
-1060
-515
+10
+262
+196
+307
 Number of people recovered
 count people with [epi-status = \"immune\"]
 0
@@ -713,20 +912,20 @@ count people with [epi-status = \"immune\"]
 11
 
 TEXTBOX
-72
-186
-142
-204
+65
+444
+135
+462
 AGE DATA
 14
 0.0
 1
 
 SLIDER
-18
-222
-190
-255
+11
+480
+183
+513
 children-pct
 children-pct
 0
@@ -738,10 +937,10 @@ children-pct
 HORIZONTAL
 
 SLIDER
-17
-271
-189
-304
+10
+529
+182
+562
 twenties-pct
 twenties-pct
 0
@@ -753,10 +952,10 @@ twenties-pct
 HORIZONTAL
 
 SLIDER
-19
-320
-191
-353
+12
+578
+184
+611
 thirties-pct
 thirties-pct
 0
@@ -768,10 +967,10 @@ thirties-pct
 HORIZONTAL
 
 SLIDER
-18
-369
-190
-402
+11
+627
+183
+660
 fourties-pct
 fourties-pct
 0
@@ -783,10 +982,10 @@ fourties-pct
 HORIZONTAL
 
 SLIDER
-15
-416
-187
-449
+8
+674
+180
+707
 fifties-pct
 fifties-pct
 0
@@ -798,10 +997,10 @@ fifties-pct
 HORIZONTAL
 
 SLIDER
-18
-464
-190
-497
+11
+722
+183
+755
 sixties-pct
 sixties-pct
 0
@@ -813,10 +1012,10 @@ sixties-pct
 HORIZONTAL
 
 SLIDER
-15
-510
-187
-543
+8
+768
+180
+801
 seventies-pct
 seventies-pct
 0
@@ -828,10 +1027,10 @@ seventies-pct
 HORIZONTAL
 
 SLIDER
-17
-556
-189
-589
+10
+814
+182
+847
 eighty-plus-pct
 eighty-plus-pct
 0
@@ -843,10 +1042,10 @@ eighty-plus-pct
 HORIZONTAL
 
 MONITOR
-894
-413
-1061
-458
+10
+315
+197
+360
 Number of people deceased
 count people with [epi-status = \"dead\"]
 17
@@ -854,20 +1053,20 @@ count people with [epi-status = \"dead\"]
 11
 
 CHOOSER
-211
-455
-349
-500
+781
+13
+919
+58
 restriction-type
 restriction-type
 "Virginia" "New York" "California" "Florida" "Custom"
-0
+1
 
 PLOT
-674
-246
-1048
-396
+1101
+226
+1475
+376
 New Cases
 Time (days)
 Number of Cases
@@ -876,19 +1075,725 @@ Number of Cases
 0.0
 10.0
 true
-true
+false
 "" ""
 PENS
 "Infected" 1.0 1 -955883 true "" "plot infections-today"
 
 MONITOR
-763
-535
-952
-580
+10
+370
+197
+415
 Total number of people infected
 total-num-infected
 0
+1
+11
+
+PLOT
+1101
+401
+1479
+551
+Total Infections
+Time (days)
+Number of People
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"infected" 1.0 0 -955883 true "" "plot total-num-infected"
+
+SWITCH
+649
+151
+827
+184
+masks-lockdown
+masks-lockdown
+0
+1
+-1000
+
+SWITCH
+650
+225
+828
+258
+stay-at-home-lockdown
+stay-at-home-lockdown
+0
+1
+-1000
+
+SWITCH
+650
+188
+827
+221
+social-distance-lockdown
+social-distance-lockdown
+0
+1
+-1000
+
+SWITCH
+651
+299
+827
+332
+grocery-distance-lockdown
+grocery-distance-lockdown
+0
+1
+-1000
+
+SWITCH
+650
+262
+827
+295
+schools-open-lockdown
+schools-open-lockdown
+1
+1
+-1000
+
+CHOOSER
+651
+389
+829
+434
+retail-mode-lockdown
+retail-mode-lockdown
+"Closed" "Curbside" "Open" "Full Capacity"
+0
+
+CHOOSER
+650
+337
+828
+382
+resturant-mode-lockdown
+resturant-mode-lockdown
+"Takeout" "Outdoor" "Indoor" "Full Capacity"
+0
+
+SLIDER
+648
+114
+826
+147
+lockdown-start-day
+lockdown-start-day
+1
+100
+9.0
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+707
+94
+782
+112
+Lockdown
+14
+0.0
+1
+
+TEXTBOX
+779
+67
+929
+91
+Custom Restrictions:
+16
+0.0
+1
+
+SLIDER
+876
+113
+1048
+146
+phase1-start-day
+phase1-start-day
+1
+365
+65.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+875
+150
+1049
+183
+masks-phase1
+masks-phase1
+0
+1
+-1000
+
+SWITCH
+875
+187
+1050
+220
+social-distance-phase1
+social-distance-phase1
+0
+1
+-1000
+
+SWITCH
+874
+224
+1049
+257
+stay-at-home-phase1
+stay-at-home-phase1
+0
+1
+-1000
+
+SWITCH
+875
+262
+1051
+295
+schools-open-phase1
+schools-open-phase1
+1
+1
+-1000
+
+SWITCH
+874
+300
+1052
+333
+grocery-distance-phase1
+grocery-distance-phase1
+0
+1
+-1000
+
+CHOOSER
+874
+339
+1052
+384
+resturant-mode-phase1
+resturant-mode-phase1
+"Takeout" "Outdoor" "Indoor" "Full Capacity"
+1
+
+CHOOSER
+874
+390
+1052
+435
+retail-mode-phase1
+retail-mode-phase1
+"Closed" "Curbside" "Open" "Full Capacity"
+1
+
+TEXTBOX
+936
+94
+995
+112
+Phase 1
+14
+0.0
+1
+
+SLIDER
+655
+494
+827
+527
+phase2-start-day
+phase2-start-day
+1
+365
+82.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+655
+533
+828
+566
+masks-phase2
+masks-phase2
+0
+1
+-1000
+
+SWITCH
+656
+572
+829
+605
+social-distance-phase2
+social-distance-phase2
+0
+1
+-1000
+
+SWITCH
+655
+610
+830
+643
+stay-at-home-phase2
+stay-at-home-phase2
+0
+1
+-1000
+
+SWITCH
+656
+648
+829
+681
+schools-open-phase2
+schools-open-phase2
+1
+1
+-1000
+
+SWITCH
+655
+687
+832
+720
+grocery-distance-phase2
+grocery-distance-phase2
+0
+1
+-1000
+
+CHOOSER
+655
+726
+831
+771
+resturant-mode-phase2
+resturant-mode-phase2
+"Takeout" "Outdoor" "Indoor" "Full Capacity"
+1
+
+CHOOSER
+655
+777
+832
+822
+retail-mode-phase2
+retail-mode-phase2
+"Closed" "Curbside" "Open" "Full Capacity"
+2
+
+TEXTBOX
+716
+471
+773
+489
+Phase 2
+14
+0.0
+1
+
+SLIDER
+875
+494
+1055
+527
+phase3-start-day
+phase3-start-day
+1
+365
+100.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+877
+534
+1057
+567
+masks-phase3
+masks-phase3
+0
+1
+-1000
+
+SWITCH
+878
+572
+1057
+605
+social-distance-phase3
+social-distance-phase3
+0
+1
+-1000
+
+SWITCH
+878
+610
+1059
+643
+stay-at-home-phase3
+stay-at-home-phase3
+0
+1
+-1000
+
+SWITCH
+878
+649
+1061
+682
+schools-open-phase3
+schools-open-phase3
+1
+1
+-1000
+
+SWITCH
+877
+688
+1062
+721
+grocery-distance-phase3
+grocery-distance-phase3
+0
+1
+-1000
+
+CHOOSER
+877
+727
+1062
+772
+returant-mode-phase3
+returant-mode-phase3
+"Takeout" "Outdoor" "Indoor" "Full Capacity"
+2
+
+CHOOSER
+878
+779
+1062
+824
+retail-mode-phase3
+retail-mode-phase3
+"Closed" "Curbside" "Open" "Full Capacity"
+2
+
+TEXTBOX
+942
+471
+994
+489
+Phase 3
+14
+0.0
+1
+
+SLIDER
+655
+882
+831
+915
+phase4-start-day
+phase4-start-day
+1
+365
+114.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+655
+920
+832
+953
+masks-phase4
+masks-phase4
+0
+1
+-1000
+
+SWITCH
+655
+960
+832
+993
+social-distance-phase4
+social-distance-phase4
+0
+1
+-1000
+
+SWITCH
+655
+1000
+833
+1033
+stay-at-home-phae4
+stay-at-home-phae4
+0
+1
+-1000
+
+SWITCH
+656
+1039
+834
+1072
+schools-open-phase4
+schools-open-phase4
+0
+1
+-1000
+
+SWITCH
+653
+1078
+834
+1111
+grocery-distance-phase4
+grocery-distance-phase4
+0
+1
+-1000
+
+CHOOSER
+654
+1117
+834
+1162
+resturant-mode-phase4
+resturant-mode-phase4
+"Takeout" "Outdoor" "Indoor" "Full Capacity"
+0
+
+CHOOSER
+654
+1168
+834
+1213
+retail-mode-phase4
+retail-mode-phase4
+"Closed" "Curbside" "Open" "Full Capacity"
+0
+
+TEXTBOX
+715
+859
+769
+877
+Phase 4
+14
+0.0
+1
+
+SLIDER
+879
+880
+1064
+913
+phase5-start-day
+phase5-start-day
+1
+365
+365.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+879
+921
+1065
+954
+masks-phase5
+masks-phase5
+1
+1
+-1000
+
+SWITCH
+879
+961
+1066
+994
+social-distance-phase5
+social-distance-phase5
+1
+1
+-1000
+
+SWITCH
+881
+1000
+1067
+1033
+stay-at-home-phase5
+stay-at-home-phase5
+1
+1
+-1000
+
+SWITCH
+881
+1039
+1068
+1072
+schools-open-phase5
+schools-open-phase5
+0
+1
+-1000
+
+SWITCH
+881
+1077
+1068
+1110
+grocery-distance-phase5
+grocery-distance-phase5
+1
+1
+-1000
+
+CHOOSER
+882
+1117
+1066
+1162
+resturant-mode-phase5
+resturant-mode-phase5
+"Takeout" "Outdoor" "Indoor" "Full Capacity"
+3
+
+CHOOSER
+883
+1169
+1067
+1214
+retail-mode-phase5
+retail-mode-phase5
+"Closed" "Curbside" "Open" "Full Capacity"
+3
+
+MONITOR
+209
+454
+311
+499
+Resturant Mode
+resturant-mode
+17
+1
+11
+
+MONITOR
+318
+454
+422
+499
+Retail Mode
+retail-mode
+17
+1
+11
+
+MONITOR
+428
+454
+528
+499
+Masks Required
+masks
+17
+1
+11
+
+MONITOR
+533
+454
+630
+499
+Social Distancing?
+social-distancing
+17
+1
+11
+
+MONITOR
+209
+509
+311
+554
+Stay at Home?
+stay-at-home
+17
+1
+11
+
+MONITOR
+316
+509
+423
+554
+Grocery Distanced?
+grocery-distanced
+17
+1
+11
+
+MONITOR
+430
+509
+527
+554
+Schools Open?
+schools-open
+17
+1
+11
+
+MONITOR
+532
+508
+634
+553
+Transmission Prob
+transmission-liklihood
+2
 1
 11
 
