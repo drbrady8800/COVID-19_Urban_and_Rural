@@ -18,6 +18,7 @@ globals
   retail-mode               ; string: could be closed, curbside, open (half capacity), or full capacity
   grocery-distanced         ; boolean, if grocery stores are socially distanced or not
   schools-open              ; boolean, if schools are open
+  current-phase             ; current phase of reopening the simulation is in
 
   ; variables to play with to refine algorithm
   percent-people-interacted ; % of people in a patch that the infected interacted with
@@ -395,6 +396,7 @@ to new-york-restrictions
     set retail-mode "closed"
     set grocery-distanced true
     set schools-open false
+    set current-phase "Lockdown"
 
     ; Ask all people in a school or store to go home
     ask people with [in-school = true or in-store = true]
@@ -407,9 +409,11 @@ to new-york-restrictions
     adjust-transmission-prob
   ] (ticks = 65) [ ; Phase 1: May 26th for most counties, only change is curbside retail
     set retail-mode "curbside"
+    set current-phase "Phase 1"
   ] (ticks = 79) [ ; Phase 2: June 9th for most counties, resturants are outdoor, retail open
     set resturant-mode "outdoor"
     set retail-mode "open"
+    set current-phase "Phase 2"
 
     ; Change the seating capacities of resturants and retail
     ask patches with [store-type = "resturant" or store-type = "retail"] [
@@ -418,6 +422,7 @@ to new-york-restrictions
     ]
   ] (ticks = 93) [ ; Phase 3: June 23rd for most counties, resturants are indoor
     set resturant-mode "indoor"
+    set current-phase "Phase 3"
 
     ; Change max capacity of resturants and retail
     ask patches with [store-type = "resturant" or store-type = "retail"] [
@@ -426,6 +431,7 @@ to new-york-restrictions
     ]
   ] (ticks = 107) [ ; Phase 4: July 7th for most counties, schools open back up
     set schools-open true
+    set current-phase "Phase 4"
   ])
 end
 
@@ -439,6 +445,7 @@ to virginia-restrictions
     set retail-mode "curbside"
     set grocery-distanced true
     set schools-open false
+    set current-phase "Lockdown"
 
     ; Ask all people in a school or store to go home
     ask people with [in-school = true or in-store = true]
@@ -452,6 +459,7 @@ to virginia-restrictions
   ] (ticks = 54) [ ; Phase 1: May 15th for most counties, open retail and resturants
     set retail-mode "open"
     set resturant-mode "outdoor"
+    set current-phase "Phase 1"
 
     ; Change the seating capacities of resturants and retail
     ask patches with [store-type = "resturant" or store-type = "retail"] [
@@ -466,6 +474,7 @@ to virginia-restrictions
     ]
   ] (ticks = 82) [ ; Phase 2: June 12th for most counties, resturants are indoor
     set resturant-mode "indoor"
+    set current-phase "Phase 2"
 
     ; Change the seating capacities of resturants
     ask patches with [store-type = "resturant"] [
@@ -474,6 +483,7 @@ to virginia-restrictions
     ]
   ] (ticks = 93) [ ; Phase 3: July 1st for most counties, increased capacities
     set resturant-mode "indoor"
+    set current-phase "Phase 3"
 
     ; Change max capacity of resturants and retail
     ask patches with [store-type = "resturant" or store-type = "retail"] [
@@ -484,15 +494,16 @@ to virginia-restrictions
 end
 
 to california-restrictions
-  ; start of lockdown state-wide (March 22nd)
+  ; start of lockdown state-wide (March 20th)
   (ifelse (ticks = 9) [
     set masks true
     set stay-at-home true
     set social-distancing true
     set resturant-mode "takeout"
-    set retail-mode "closed"
+    set retail-mode "curbside"
     set grocery-distanced true
     set schools-open false
+    set current-phase "Lockdown / Phase 1"
 
     ; Ask all people in a school or store to go home
     ask people with [in-school = true or in-store = true]
@@ -503,116 +514,246 @@ to california-restrictions
     ]
     ; Adjust the transmission probablity
     adjust-transmission-prob
-  ] (ticks = 65) [ ; Phase 1: May 26th for most counties, only change is curbside retail
-    set retail-mode "curbside"
-  ] (ticks = 79) [ ; Phase 2: June 9th for most counties, resturants are outdoor, retail open
-    set resturant-mode "outdoor"
+  ] (ticks = 59) [ ; Phase 2: May 8th for most counties
     set retail-mode "open"
+    set resturant-mode "outdoor"
+    set current-phase "Phase 2"
 
     ; Change the seating capacities of resturants and retail
     ask patches with [store-type = "resturant" or store-type = "retail"] [
       ; set capacity to 1/4 of normal capactiy
       set max-capacity (max-capacity / 4)
     ]
-  ] (ticks = 93) [ ; Phase 3: June 23rd for most counties, resturants are indoor
+  ] (ticks = 94) [ ; Phase 3: June 12th for most counties
     set resturant-mode "indoor"
+    set current-phase "Phase 3"
 
-    ; Change max capacity of resturants and retail
+    ; Change the seating capacities of resturants and retail
     ask patches with [store-type = "resturant" or store-type = "retail"] [
-      ; set capacity to 1/2 of normal capactiy
+      ; set capacity to 1/4 of normal capactiy
       set max-capacity (max-capacity * 2)
     ]
-  ] (ticks = 107) [ ; Phase 4: July 7th for most counties, schools open back up
-    set schools-open true
+  ] (ticks = 125) [ ; Reclosure: July 13th back to phase 2
+    set resturant-mode "outdoor"
+    set current-phase "Reclosure / Phase 2"
+
+    ; Change the seating capacities of resturants and retail
+    ask patches with [store-type = "resturant" or store-type = "retail"] [
+      ; set capacity to 1/4 of normal capactiy
+      set max-capacity (max-capacity / 2)
+    ]
+    ; Don't know what the next phase will be
+;  ] (ticks = 107) [ ; Phase 4: July 7th for most counties, schools open back up
+;    set schools-open true
   ])
 end
 
 to florida-restrictions
-  ; start of lockdown state-wide (March 22nd)
-  (ifelse (ticks = 9) [
+  ; start of lockdown state-wide (March 20th), only resturants and bars are closed
+  (ifelse (ticks = 10) [
     set masks true
-    set stay-at-home true
     set social-distancing true
     set resturant-mode "takeout"
-    set retail-mode "closed"
-    set grocery-distanced true
     set schools-open false
+    set current-phase "Closed Resturants"
 
-    ; Ask all people in a school or store to go home
-    ask people with [in-school = true or in-store = true]
+    ; Ask all people in a school and resturants to go home
+    ask people with [in-school = true or (in-store = true
+      and ([store-type] of patch-here = "resturant"))]
     [
-      set in-store false
       set in-school false
+      set in-store false
       move-to previous-patch
     ]
+
     ; Adjust the transmission probablity
     adjust-transmission-prob
-  ] (ticks = 65) [ ; Phase 1: May 26th for most counties, only change is curbside retail
+  ] (ticks = 14 and pop-density >= 1500) [ ; Start of stay-at-home orders for large counties
+    set stay-at-home true
     set retail-mode "curbside"
-  ] (ticks = 79) [ ; Phase 2: June 9th for most counties, resturants are outdoor, retail open
+    set grocery-distanced true
+    set current-phase "Large Lockdown"
+
+    ; Ask all people in a store to go home
+    ask people with [in-store = true]
+    [
+      set in-store false
+      move-to previous-patch
+    ]
+  ] (ticks = 21 and pop-density < 1500) [ ; Lockdown for the rest of the counties
+    set stay-at-home true
+    set retail-mode "curbside"
+    set grocery-distanced true
+    set current-phase "All Lockdown"
+
+    ; Ask all people in a store to go home
+    ask people with [in-store = true]
+    [
+      set in-store false
+      move-to previous-patch
+    ]
+  ] (ticks = 69) [ ; Phase 1: May 18th for most counties, half capacity for retail and resturant
     set resturant-mode "outdoor"
     set retail-mode "open"
+    set current-phase "Phase 1"
 
     ; Change the seating capacities of resturants and retail
     ask patches with [store-type = "resturant" or store-type = "retail"] [
       ; set capacity to 1/4 of normal capactiy
       set max-capacity (max-capacity / 4)
     ]
-  ] (ticks = 93) [ ; Phase 3: June 23rd for most counties, resturants are indoor
+  ] (ticks = 87) [ ; Phase 2: June 5th for most counties, resturants are indoor, retail open
     set resturant-mode "indoor"
+    set retail-mode "open"
+    set schools-open true
+    set current-phase "Phase 2"
 
-    ; Change max capacity of resturants and retail
+    ; Change the seating capacities of resturants and retail
     ask patches with [store-type = "resturant" or store-type = "retail"] [
       ; set capacity to 1/2 of normal capactiy
       set max-capacity (max-capacity * 2)
     ]
-  ] (ticks = 107) [ ; Phase 4: July 7th for most counties, schools open back up
-    set schools-open true
+;  ] (ticks = 97) [ ; Phase 3: no date given yet
+;    set resturant-mode "full capacity"
+;    set retail-mode "full capacity"
+;    set stay-at-home false
+;
+;    ; Change max capacity of resturants and retail
+;    ask patches with [store-type = "resturant" or store-type = "retail"] [
+;      ; set capacity to normal capactiy
+;      set max-capacity (max-capacity * 2)
+;    ]
   ])
 end
 
 to custom-restrictions
-  ; start of lockdown state-wide (March 22nd)
-  (ifelse (ticks = 9) [
-    set masks true
-    set stay-at-home true
-    set social-distancing true
-    set resturant-mode "takeout"
-    set retail-mode "closed"
-    set grocery-distanced true
-    set schools-open false
+  ; start of lockdown
+  (ifelse (ticks = lockdown-start-day) [
+    set masks masks-lockdown
+    set stay-at-home stay-at-home-lockdown
+    set social-distancing social-distance-lockdown
+    set resturant-mode resturant-mode-lockdown
+    set retail-mode retail-mode-lockdown
+    set grocery-distanced grocery-distance-lockdown
+    set schools-open schools-open-lockdown
+    set current-phase "Lockdown"
 
-    ; Ask all people in a school or store to go home
-    ask people with [in-school = true or in-store = true]
-    [
-      set in-store false
-      set in-school false
-      move-to previous-patch
-    ]
+    ; Move people home from schools and stores
+    move-home
+
     ; Adjust the transmission probablity
     adjust-transmission-prob
-  ] (ticks = 65) [ ; Phase 1: May 26th for most counties, only change is curbside retail
-    set retail-mode "curbside"
-  ] (ticks = 79) [ ; Phase 2: June 9th for most counties, resturants are outdoor, retail open
-    set resturant-mode "outdoor"
-    set retail-mode "open"
 
-    ; Change the seating capacities of resturants and retail
-    ask patches with [store-type = "resturant" or store-type = "retail"] [
-      ; set capacity to 1/4 of normal capactiy
-      set max-capacity (max-capacity / 4)
-    ]
-  ] (ticks = 93) [ ; Phase 3: June 23rd for most counties, resturants are indoor
-    set resturant-mode "indoor"
+  ] (ticks = phase1-start-day) [ ; Phase 1
+    set masks masks-phase1
+    set stay-at-home stay-at-home-phase1
+    set social-distancing social-distance-phase1
+    set resturant-mode resturant-mode-phase1
+    set retail-mode retail-mode-phase1
+    set grocery-distanced grocery-distance-phase1
+    set schools-open schools-open-phase1
+    set current-phase "Phase 1"
 
-    ; Change max capacity of resturants and retail
-    ask patches with [store-type = "resturant" or store-type = "retail"] [
-      ; set capacity to 1/2 of normal capactiy
-      set max-capacity (max-capacity * 2)
-    ]
-  ] (ticks = 107) [ ; Phase 4: July 7th for most counties, schools open back up
-    set schools-open true
+    ; Move people home from schools and stores
+    move-home
+
+    ; Adjust the transmission probablity
+    adjust-transmission-prob
+
+  ] (ticks = phase2-start-day) [ ; Phase 2
+    set masks masks-phase2
+    set stay-at-home stay-at-home-phase2
+    set social-distancing social-distance-phase2
+    set resturant-mode resturant-mode-phase2
+    set retail-mode retail-mode-phase2
+    set grocery-distanced grocery-distance-phase2
+    set schools-open schools-open-phase2
+    set current-phase "Phase 2"
+
+    ; Move people home from schools and stores
+    move-home
+
+    ; Adjust the transmission probablity
+    adjust-transmission-prob
+
+  ] (ticks = phase3-start-day) [ ; Phase 3
+    set masks masks-phase3
+    set stay-at-home stay-at-home-phase3
+    set social-distancing social-distance-phase3
+    set resturant-mode resturant-mode-phase3
+    set retail-mode retail-mode-phase3
+    set grocery-distanced grocery-distance-phase3
+    set schools-open schools-open-phase3
+    set current-phase "Phase 3"
+
+    ; Move people home from schools and stores
+    move-home
+
+    ; Adjust the transmission probablity
+    adjust-transmission-prob
+
+  ] (ticks = phase4-start-day) [ ; Phase 4
+    set masks masks-phase4
+    set stay-at-home stay-at-home-phase4
+    set social-distancing social-distance-phase4
+    set resturant-mode resturant-mode-phase4
+    set retail-mode retail-mode-phase4
+    set grocery-distanced grocery-distance-phase4
+    set schools-open schools-open-phase4
+    set current-phase "Phase 4"
+
+    ; Move people home from schools and stores
+    move-home
+
+    ; Adjust the transmission probablity
+    adjust-transmission-prob
+
+  ] (ticks = phase5-start-day) [ ; Phase 5
+    set masks masks-phase5
+    set stay-at-home stay-at-home-phase5
+    set social-distancing social-distance-phase5
+    set resturant-mode resturant-mode-phase5
+    set retail-mode retail-mode-phase5
+    set grocery-distanced grocery-distance-phase5
+    set schools-open schools-open-phase5
+    set current-phase "Phase 5"
+
+    ; Move people home from schools and stores
+    move-home
+
+    ; Adjust the transmission probablity
+    adjust-transmission-prob
+
   ])
+end
+
+to move-home
+  ; If schools are closed ask all people in school home
+    if (not schools-open) [
+      ask people with [in-school = true]
+      [
+        set in-school false
+        move-to previous-patch
+      ]
+    ]
+
+    ; If resturants are closed ask all people in resturants home
+    if (resturant-mode = "takeout") [
+    ask people with [(in-store = true and ([store-type] of patch-here = "resturant"))]
+      [
+        set in-store false
+        move-to previous-patch
+      ]
+    ]
+
+    ; If retail is closed ask all people in retail stores home
+    if (retail-mode = "closed") [
+      ask people with [(in-store = true and ([store-type] of patch-here = "retail"))]
+      [
+        set in-store false
+        move-to previous-patch
+      ]
+    ]
 end
 
 ; ===============================================================================================================
@@ -650,6 +791,7 @@ to setup-globals
   set retail-mode "full capacity"
   set grocery-distanced false
   set schools-open true
+  set current-phase "Open"
 end
 
 ; Setup the patches that are stores and schools
@@ -827,9 +969,9 @@ NIL
 
 SLIDER
 11
-98
+75
 195
-131
+108
 pop-density
 pop-density
 50
@@ -880,9 +1022,9 @@ PENS
 
 MONITOR
 11
-152
+129
 196
-197
+174
 Number of people susceptible 
 count people with [epi-status = \"susceptible\"]
 0
@@ -891,9 +1033,9 @@ count people with [epi-status = \"susceptible\"]
 
 MONITOR
 12
-208
+185
 194
-253
+230
 Number of people infected
 count people with [epi-status = \"infectious\" or\nepi-status = \"exposed\"]
 17
@@ -902,9 +1044,9 @@ count people with [epi-status = \"infectious\" or\nepi-status = \"exposed\"]
 
 MONITOR
 10
-262
+239
 196
-307
+284
 Number of people recovered
 count people with [epi-status = \"immune\"]
 0
@@ -912,10 +1054,10 @@ count people with [epi-status = \"immune\"]
 11
 
 TEXTBOX
-65
-444
-135
-462
+66
+459
+136
+477
 AGE DATA
 14
 0.0
@@ -1043,9 +1185,9 @@ HORIZONTAL
 
 MONITOR
 10
-315
+292
 197
-360
+337
 Number of people deceased
 count people with [epi-status = \"dead\"]
 17
@@ -1060,7 +1202,7 @@ CHOOSER
 restriction-type
 restriction-type
 "Virginia" "New York" "California" "Florida" "Custom"
-1
+4
 
 PLOT
 1101
@@ -1082,9 +1224,9 @@ PENS
 
 MONITOR
 10
-370
+347
 197
-415
+392
 Total number of people infected
 total-num-infected
 0
@@ -1494,8 +1636,8 @@ CHOOSER
 727
 1062
 772
-returant-mode-phase3
-returant-mode-phase3
+resturant-mode-phase3
+resturant-mode-phase3
 "Takeout" "Outdoor" "Indoor" "Full Capacity"
 2
 
@@ -1528,7 +1670,7 @@ phase4-start-day
 phase4-start-day
 1
 365
-114.0
+44.0
 1
 1
 NIL
@@ -1561,8 +1703,8 @@ SWITCH
 1000
 833
 1033
-stay-at-home-phae4
-stay-at-home-phae4
+stay-at-home-phase4
+stay-at-home-phase4
 0
 1
 -1000
@@ -1789,11 +1931,22 @@ schools-open
 MONITOR
 532
 508
-634
+632
 553
 Transmission Prob
 transmission-liklihood
 2
+1
+11
+
+MONITOR
+11
+401
+198
+446
+Current Phase
+current-phase
+17
 1
 11
 
