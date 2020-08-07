@@ -777,10 +777,10 @@ end
 to setup-globals
   ; Varaibles to manipulate and test
   set percent-people-interacted .66
-  set percent-moving 0.65
-  set initial-prob-trans 0.06
-  set grocery-trans-factor 0.25
-  set store-frequency 0.28
+  set percent-moving 0.80
+  set initial-prob-trans 0.6
+  set grocery-trans-factor 0.15
+  set store-frequency 0.25
 
   set total-num pop-density * 5
   set transmission-liklihood initial-prob-trans
