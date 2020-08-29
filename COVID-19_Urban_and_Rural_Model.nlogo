@@ -2333,10 +2333,10 @@ NetLogo 6.1.1
   <experiment name="experiment" repetitions="8" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
-    <metric>count people with [epi-status = "susceptible"]</metric>
-    <metric>count people with [epi-status = "immune"]</metric>
-    <metric>count people with [epi-status = "dead"]</metric>
-    <metric>count people with [epi-status = "infectious"]</metric>
+    <metric>(count people with [epi-status = "susceptible"] / total-num) * 100</metric>
+    <metric>(count people with [epi-status = "exposed" or epi-status = "infectious"] / total-num) * 100</metric>
+    <metric>(count people with [epi-status = "immune"] / total-num) * 100</metric>
+    <metric>(count people with [epi-status = "dead"] / total-num) * 100</metric>
     <metric>total-num-infected</metric>
     <metric>infections-today</metric>
     <enumeratedValueSet variable="schools-open-phase3">
