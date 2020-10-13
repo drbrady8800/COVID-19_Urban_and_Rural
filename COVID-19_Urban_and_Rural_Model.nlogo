@@ -5,10 +5,11 @@ globals
   total-num                 ; total number of people
   retail-stores             ; a set of patches that are retail stores
   resturants                ; a set of patches that are resturants
-  grocery-stores             ; a set of patches that are grpcery stores
+  grocery-stores            ; a set of patches that are grpcery stores
   schools                   ; a set of patches that are schools
   transmission-liklihood    ; probability of transmission in the same patch
   infections-today          ; new infections on a given day
+  morning                   ; whether it is morning, if morning move, else go home
 
   ; global variables to determine the restrictions on the people
   social-distancing         ; boolean whether social distancing in mandatory
@@ -46,10 +47,10 @@ people-own
   when-exposed              ; the tick when the person is exposed
   age                       ; age of person, affects the death-rate
   death-rate                ; the death rate for the persons age group
-  previous-patch            ; used to keep track of the patch a person was at before a store or school
   in-store                  ; a boolean to determine if the person is in a store
   in-school                 ; a boolean to determine if the person is in a school
   my-school                 ; if a child, the patch the person goes to school
+  my-home                   ; the patch to return to if it is night
   at-home                   ; if the person is at home (won't get the virus)
 ]
 
@@ -87,6 +88,12 @@ to go
   ])
   move
   update-status
+  transmit-infection
+  ; Move everyone home for the night
+  ask people with [ epi-status = "susceptible" or epi-status = "exposed" or epi-status = "infectious"]
+  [
+    move-home-daily self
+  ]
   transmit-infection
   tick
 end
@@ -126,12 +133,12 @@ to move
 
     ; If they didn't go out move forward or not at all
     (ifelse (not went-out) [
-      (ifelse (stay-at-home and (random-float 1 < percent-moving )) [
+      (ifelse (stay-at-home and (random-float 1 < (percent-stay-home / 100))) [
         set at-home true
       ] ; else move randomly
       [
         set at-home false
-        forward random-float 2 + 1
+        forward random-float 4 + 1
       ])
     ] ; else set at-home false
     [
@@ -146,6 +153,15 @@ to move
       ]
     ]
   ]
+end
+
+to move-home-daily [mover]
+  move-to my-home
+  let step-forward random-float 1 - 0.5
+  let step-side random-float 1 - 0.5
+  setxy (xcor + step-side) (ycor + step-forward)
+  set in-school false
+  set in-store false
 end
 
 ; Set the heading of a person passed as a parameter, return whether they left the boundry
@@ -194,11 +210,6 @@ to-report go-out [to-go-out]
     and (schools-open) and ((ticks < 93) or (ticks > 170))) [ ; if its not the summer
     ; If not in school go to school
     if (not in-school) [
-      ; If the child is not at school and not in the same patch as its previous set its
-      ; previous patch to its current patch
-      if ((patch-here != previous-patch) and (patch-here != my-school)) [
-        set previous-patch patch-here
-      ]
       set in-school true
       move-to my-school
     ]
@@ -206,7 +217,7 @@ to-report go-out [to-go-out]
   ] ((in-store) or (in-school)) [ ; If in a store or school go home
     set in-store false
     set in-school false
-    move-to previous-patch
+    move-to my-home
     set at-home true
   ] (random-float 1 < store-frequency) [ ; go out on average twice a week per person
     ; If the person went out set the value to true
@@ -244,9 +255,6 @@ to-report go-to-a-store [goer-to-store]
 
   ; If the store is under capacity the person can go to it, otherwise it does nothing
   if (current-capacity <= ([max-capacity] of the-store)) [
-    if ((patch-here != previous-patch) and (patch-here != my-school)) [
-      set previous-patch patch-here
-    ]
     set in-store true
     move-to the-store
     set to-return true
@@ -278,7 +286,7 @@ to transmit-infection
       set num-can-infect ((count people-in-patch) * percent-people-interacted)
     ])
 
-    ask n-of num-can-infect people-in-patch ; Only 1/2 of people in the patch can get infected
+    ask n-of num-can-infect people-in-patch
     [
       ; Set the probablity of infection to some number
       let prob-infect transmission-liklihood
@@ -288,8 +296,8 @@ to transmit-infection
         set prob-infect (prob-infect - (initial-prob-trans * grocery-trans-factor))
       ]
 
-      ; If the person is infected change their epi-status
-      if random-float 1 < prob-infect
+      ; If the person is infected change their epi-status, makes sure there are no outrageous infection days
+      if ((random-float 1 < prob-infect) and (infections-today < pop-density / 100))
       [
         set-status-infected
       ]
@@ -299,22 +307,22 @@ end
 
 to adjust-transmission-prob
   ; reset the probablity back to original and adjust from there
-  let new-prob initial-prob-trans
+  ;let new-prob initial-prob-trans
 
   if (masks) [
-    set new-prob (new-prob - (initial-prob-trans / 3))
+    set transmission-liklihood transmission-liklihood / mask-factor ;new-prob (new-prob - (initial-prob-trans / 3))
   ]
 
   if (social-distancing) [
-    set new-prob (new-prob - (initial-prob-trans / 3))
+    set transmission-liklihood transmission-liklihood / distance-factor
   ]
 
   ; If past lockdown decrese transmission prob
   if (current-phase != "Lockdown" and current-phase != "Lockdown / Phase 1" and current-phase != "Large Lockdown" and current-phase != "Small Lockdown" and current-phase != "Closed Resturants") [
-    set new-prob (new-prob - (initial-prob-trans / 18))
+    ;set new-prob (new-prob - (initial-prob-trans / 18))
   ]
 
-  set transmission-liklihood new-prob
+  ;set transmission-liklihood new-prob
 end
 
 ; ===============================================================================================================
@@ -423,7 +431,7 @@ to new-york-restrictions
     [
       set in-store false
       set in-school false
-      move-to previous-patch
+      move-to my-home
     ]
     ; Adjust the transmission probablity
     adjust-transmission-prob
@@ -475,7 +483,7 @@ to virginia-restrictions
     [
       set in-store false
       set in-school false
-      move-to previous-patch
+      move-to my-home
     ]
     ; Adjust the transmission probablity
     adjust-transmission-prob
@@ -533,7 +541,7 @@ to california-restrictions
     [
       set in-store false
       set in-school false
-      move-to previous-patch
+      move-to my-home
     ]
     ; Adjust the transmission probablity
     adjust-transmission-prob
@@ -586,7 +594,7 @@ to florida-restrictions
     [
       set in-school false
       set in-store false
-      move-to previous-patch
+      move-to my-home
     ]
 
     ; Adjust the transmission probablity
@@ -601,7 +609,7 @@ to florida-restrictions
     ask people with [in-store = true]
     [
       set in-store false
-      move-to previous-patch
+      move-to my-home
     ]
   ] (ticks = 21 and pop-density < 1500) [ ; Lockdown for the rest of the counties
     set stay-at-home true
@@ -613,7 +621,7 @@ to florida-restrictions
     ask people with [in-store = true]
     [
       set in-store false
-      move-to previous-patch
+      move-to my-home
     ]
   ] (ticks = 69) [ ; Phase 1: May 18th for most counties, half capacity for retail and resturant
     set resturant-mode "outdoor"
@@ -681,7 +689,7 @@ to custom-restrictions
     move-home
 
     ; Adjust the transmission probablity
-    adjust-transmission-prob
+    ; adjust-transmission-prob
 
   ] (ticks = phase2-start-day) [ ; Phase 2
     set masks masks-phase2
@@ -697,7 +705,7 @@ to custom-restrictions
     move-home
 
     ; Adjust the transmission probablity
-    adjust-transmission-prob
+    ; adjust-transmission-prob
 
   ] (ticks = phase3-start-day) [ ; Phase 3
     set masks masks-phase3
@@ -713,7 +721,7 @@ to custom-restrictions
     move-home
 
     ; Adjust the transmission probablity
-    adjust-transmission-prob
+    ; adjust-transmission-prob
 
   ] (ticks = phase4-start-day) [ ; Phase 4
     set masks masks-phase4
@@ -729,7 +737,7 @@ to custom-restrictions
     move-home
 
     ; Adjust the transmission probablity
-    adjust-transmission-prob
+    ; adjust-transmission-prob
 
   ] (ticks = phase5-start-day) [ ; Phase 5
     set masks masks-phase5
@@ -745,7 +753,7 @@ to custom-restrictions
     move-home
 
     ; Adjust the transmission probablity
-    adjust-transmission-prob
+    ; adjust-transmission-prob
 
   ])
 end
@@ -756,7 +764,7 @@ to move-home
       ask people with [in-school = true]
       [
         set in-school false
-        move-to previous-patch
+        move-home-daily self
       ]
     ]
 
@@ -765,7 +773,7 @@ to move-home
     ask people with [(in-store = true and ([store-type] of patch-here = "resturant"))]
       [
         set in-store false
-        move-to previous-patch
+        move-home-daily self
       ]
     ]
 
@@ -774,7 +782,7 @@ to move-home
       ask people with [(in-store = true and ([store-type] of patch-here = "retail"))]
       [
         set in-store false
-        move-to previous-patch
+        move-home-daily self
       ]
     ]
 end
@@ -799,9 +807,9 @@ end
 ; Declare the initial values of global variables
 to setup-globals
   ; Varaibles to manipulate and test
-  set percent-people-interacted 0.75
+  set percent-people-interacted 0.3
   set percent-moving 0.7
-  set initial-prob-trans 0.09
+  set initial-prob-trans 0.17
   set grocery-trans-factor 0.25
   set store-frequency 0.28
 
@@ -882,7 +890,6 @@ to setup-people
     set epi-status "susceptible"
     set in-store false
     set in-school false
-    set previous-patch patch-here
     set at-home false
 
     ; Set the color, size, and shape of every person
@@ -891,6 +898,7 @@ to setup-people
     set shape "default"
     ; Randomly spread out the people around the square
     setxy random-xcor random-ycor
+    set my-home patch-here
   ]
   ; A variable that allows for percentage overflow, just divide given percents by total
   let total-pct (children-pct + twenties-pct + thirties-pct + fourties-pct + fifties-pct + sixties-pct + seventies-pct + eighty-plus-pct)
@@ -999,7 +1007,7 @@ pop-density
 pop-density
 50
 5000
-2190.0
+2330.0
 10
 1
 people/sq. mile
@@ -1077,20 +1085,20 @@ count people with [epi-status = \"immune\"]
 11
 
 TEXTBOX
-66
-459
-136
-477
+385
+569
+455
+587
 AGE DATA
 14
 0.0
 1
 
 SLIDER
-11
-480
-183
-513
+330
+590
+502
+623
 children-pct
 children-pct
 0
@@ -1102,10 +1110,10 @@ children-pct
 HORIZONTAL
 
 SLIDER
-10
-529
-182
-562
+329
+639
+501
+672
 twenties-pct
 twenties-pct
 0
@@ -1117,10 +1125,10 @@ twenties-pct
 HORIZONTAL
 
 SLIDER
-12
-578
-184
-611
+331
+688
+503
+721
 thirties-pct
 thirties-pct
 0
@@ -1132,10 +1140,10 @@ thirties-pct
 HORIZONTAL
 
 SLIDER
-11
-627
-183
-660
+330
+737
+502
+770
 fourties-pct
 fourties-pct
 0
@@ -1147,10 +1155,10 @@ fourties-pct
 HORIZONTAL
 
 SLIDER
-8
-674
-180
-707
+327
+784
+499
+817
 fifties-pct
 fifties-pct
 0
@@ -1162,10 +1170,10 @@ fifties-pct
 HORIZONTAL
 
 SLIDER
-11
-722
-183
-755
+330
+832
+502
+865
 sixties-pct
 sixties-pct
 0
@@ -1177,10 +1185,10 @@ sixties-pct
 HORIZONTAL
 
 SLIDER
-8
-768
-180
-801
+327
+878
+499
+911
 seventies-pct
 seventies-pct
 0
@@ -1192,10 +1200,10 @@ seventies-pct
 HORIZONTAL
 
 SLIDER
-10
-814
-182
-847
+329
+924
+501
+957
 eighty-plus-pct
 eighty-plus-pct
 0
@@ -1225,7 +1233,7 @@ CHOOSER
 restriction-type
 restriction-type
 "Virginia" "New York" "California" "Florida" "Custom"
-1
+4
 
 PLOT
 1101
@@ -1281,7 +1289,7 @@ SWITCH
 184
 masks-lockdown
 masks-lockdown
-1
+0
 1
 -1000
 
@@ -1314,7 +1322,7 @@ SWITCH
 332
 grocery-distance-lockdown
 grocery-distance-lockdown
-1
+0
 1
 -1000
 
@@ -1337,7 +1345,7 @@ CHOOSER
 retail-mode-lockdown
 retail-mode-lockdown
 "closed" "curbside" "open" "full capacity"
-0
+1
 
 CHOOSER
 650
@@ -1393,7 +1401,7 @@ phase1-start-day
 phase1-start-day
 1
 365
-365.0
+54.0
 1
 1
 NIL
@@ -1472,7 +1480,7 @@ CHOOSER
 retail-mode-phase1
 retail-mode-phase1
 "closed" "curbside" "open" "full capacity"
-3
+2
 
 TEXTBOX
 936
@@ -1493,7 +1501,7 @@ phase2-start-day
 phase2-start-day
 1
 365
-365.0
+82.0
 1
 1
 NIL
@@ -1506,7 +1514,7 @@ SWITCH
 566
 masks-phase2
 masks-phase2
-1
+0
 1
 -1000
 
@@ -1562,7 +1570,7 @@ CHOOSER
 resturant-mode-phase2
 resturant-mode-phase2
 "takeout" "outdoor" "indoor" "full capacity"
-1
+2
 
 CHOOSER
 655
@@ -1593,7 +1601,7 @@ phase3-start-day
 phase3-start-day
 1
 365
-365.0
+93.0
 1
 1
 NIL
@@ -1982,6 +1990,51 @@ Phase 5
 14
 0.0
 1
+
+SLIDER
+13
+453
+193
+486
+mask-factor
+mask-factor
+0
+10
+2.2
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+11
+532
+195
+565
+distance-factor
+distance-factor
+0
+10
+1.6
+.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+12
+493
+194
+526
+percent-stay-home
+percent-stay-home
+0
+100
+40.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
