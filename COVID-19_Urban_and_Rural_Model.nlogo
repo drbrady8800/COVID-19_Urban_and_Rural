@@ -1401,7 +1401,7 @@ phase1-start-day
 phase1-start-day
 1
 365
-54.0
+9.0
 1
 1
 NIL
@@ -1470,7 +1470,7 @@ CHOOSER
 resturant-mode-phase1
 resturant-mode-phase1
 "takeout" "outdoor" "indoor" "full capacity"
-1
+0
 
 CHOOSER
 874
@@ -1480,7 +1480,7 @@ CHOOSER
 retail-mode-phase1
 retail-mode-phase1
 "closed" "curbside" "open" "full capacity"
-2
+1
 
 TEXTBOX
 936
@@ -1501,7 +1501,7 @@ phase2-start-day
 phase2-start-day
 1
 365
-82.0
+54.0
 1
 1
 NIL
@@ -1570,7 +1570,7 @@ CHOOSER
 resturant-mode-phase2
 resturant-mode-phase2
 "takeout" "outdoor" "indoor" "full capacity"
-2
+1
 
 CHOOSER
 655
@@ -1601,7 +1601,7 @@ phase3-start-day
 phase3-start-day
 1
 365
-93.0
+81.0
 1
 1
 NIL
@@ -1625,7 +1625,7 @@ SWITCH
 605
 social-distance-phase3
 social-distance-phase3
-1
+0
 1
 -1000
 
@@ -1701,7 +1701,7 @@ phase4-start-day
 phase4-start-day
 1
 365
-365.0
+93.0
 1
 1
 NIL
@@ -1747,7 +1747,7 @@ SWITCH
 1072
 schools-open-phase4
 schools-open-phase4
-0
+1
 1
 -1000
 
@@ -2559,6 +2559,195 @@ NetLogo 6.1.1
     </enumeratedValueSet>
     <enumeratedValueSet variable="retail-mode-phase1">
       <value value="&quot;full capacity&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stay-at-home-phase1">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-distance-phase5">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment" repetitions="8" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>infections-today</metric>
+    <steppedValueSet variable="phase1-start-day" first="9" step="27" last="18"/>
+    <enumeratedValueSet variable="schools-open-phase3">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="schools-open-phase5">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grocery-distance-phase3">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="restriction-type">
+      <value value="&quot;Custom&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resturant-mode-phase2">
+      <value value="&quot;indoor&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fifties-pct">
+      <value value="12.9"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-distance-phase1">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grocery-distance-phase5">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="seventies-pct">
+      <value value="7.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="schools-open-phase1">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="percent-stay-home">
+      <value value="40"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grocery-distance-phase1">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="masks-phase5">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="schools-open-lockdown">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stay-at-home-lockdown">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stay-at-home-phase4">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resturant-mode-lockdown">
+      <value value="&quot;takeout&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="retail-mode-phase4">
+      <value value="&quot;open&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="masks-phase1">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="twenties-pct">
+      <value value="13.7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="masks-phase3">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resturant-mode-phase3">
+      <value value="&quot;indoor&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="phase3-start-day">
+      <value value="93"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="thirties-pct">
+      <value value="13.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-distance-phase2">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resturant-mode-phase5">
+      <value value="&quot;full capacity&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-distance-phase4">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="phase4-start-day">
+      <value value="365"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="schools-open-phase2">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stay-at-home-phase2">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="retail-mode-phase2">
+      <value value="&quot;open&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="phase1-start-day">
+      <value value="27"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="phase5-start-day">
+      <value value="365"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="schools-open-phase4">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grocery-distance-phase2">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="phase2-start-day">
+      <value value="82"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resturant-mode-phase1">
+      <value value="&quot;outdoor&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="lockdown-start-day">
+      <value value="9"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grocery-distance-phase4">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="masks-lockdown">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="distance-factor">
+      <value value="1.6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="retail-mode-lockdown">
+      <value value="&quot;curbside&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="children-pct">
+      <value value="24.8"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="pop-density">
+      <value value="2330"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="retail-mode-phase3">
+      <value value="&quot;open&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stay-at-home-phase3">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-distance-lockdown">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mask-factor">
+      <value value="2.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fourties-pct">
+      <value value="12.3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stay-at-home-phase5">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="retail-mode-phase5">
+      <value value="&quot;full capacity&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="masks-phase2">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grocery-distance-lockdown">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sixties-pct">
+      <value value="11.6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="eighty-plus-pct">
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="masks-phase4">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resturant-mode-phase4">
+      <value value="&quot;indoor&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-distance-phase3">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="retail-mode-phase1">
+      <value value="&quot;open&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="stay-at-home-phase1">
       <value value="true"/>
