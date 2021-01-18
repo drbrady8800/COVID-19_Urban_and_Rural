@@ -29,6 +29,9 @@ globals
   initial-prob-trans        ; original probablity of transmission
   grocery-trans-factor      ; How much safer is grocery store than normal interactions
   store-frequency           ; How often people go to a store
+
+  ; variables for the vaccinated
+  num-vaccinated             ; Number of people vaccinated
 ]
 
 ; Variables that identify patch types
@@ -66,8 +69,29 @@ to setup
   setup-people
   setup-schools
   reset-ticks
-  ; Start the epidemic with x amount of initial infections
-  start-epidemic (1 + total-num / 4000)
+  (ifelse (Give-Vaccines) [
+    ; 2 week average cases / day * 10 days (presume within 10 days is still infectious) / total US pop (as of 1/17/21)
+    let num-infected-BV (total-num * ((240000 * 10) / 328200000))
+    start-epidemic num-infected-BV
+
+    ; Make certain percentage of population immune as of 1/17/21
+    let num-recovered-BV (total-num * ((24000000 - (240000 * 10)) / 328200000))
+    ask n-of num-recovered-BV people [
+      set epi-status "immune"
+    ]
+
+    ; Make certain percentage of population dead as of 1/17/21
+    let num-dead-BV (total-num * (400000 / 328200000))
+    ask n-of num-dead-BV people [
+      set epi-status "dead"
+    ]
+
+    set total-num-infected (num-recovered-BV + num-dead-BV + num-infected-BV)
+    tick-advance Vaccine-Start-Day
+  ] [ ; Else
+    ; Start the epidemic with x amount of initial infections
+    start-epidemic (1 + total-num / 4000)
+  ])
 end
 
 to go
@@ -86,9 +110,9 @@ to go
     new-york-restrictions
   ] (restriction-type = "Florida") [
     florida-restrictions
-  ] ; else
-  [
-    custom-restrictions
+    ] ; else
+    [
+      custom-restrictions
   ])
   move
   update-status
@@ -99,6 +123,10 @@ to go
     move-home-daily self
   ]
   transmit-infection
+  ; If we are doing vaccines give out vaccines
+  if (Give-Vaccines) [
+    delegate-vaccines
+  ]
   tick
 end
 
@@ -296,6 +324,35 @@ to-report go-to-a-store [goer-to-store]
   report to-return
 end
 
+to move-home
+  ; If schools are closed ask all people in school home
+    if (not schools-open) [
+      ask people with [in-school = true]
+      [
+        set in-school false
+        move-home-daily self
+      ]
+    ]
+
+    ; If resturants are closed ask all people in resturants home
+    if (resturant-mode = "takeout") [
+    ask people with [(in-store = true and ([store-type] of patch-here = "resturant"))]
+      [
+        set in-store false
+        move-home-daily self
+      ]
+    ]
+
+    ; If retail is closed ask all people in retail stores home
+    if (retail-mode = "closed") [
+      ask people with [(in-store = true and ([store-type] of patch-here = "retail"))]
+      [
+        set in-store false
+        move-home-daily self
+      ]
+    ]
+end
+
 ; If infected there is a probability of exposing other people
 ; in the same patch (about 100 yds)
 to transmit-infection
@@ -346,7 +403,7 @@ to transmit-infection
         set prob-infect (prob-infect - (initial-prob-trans * grocery-trans-factor))
       ]
 
-      ; If the person is infected change their epi-status, makes sure there are no outrageous infection days
+      ; If the person is infected change their epi-status, makes sure there are no outrageous infection days in the beginning
       if ((random-float 1 < prob-infect) and ((infections-today < pop-density / 100) or (ticks > 10)))
       [
         set-status-infected
@@ -457,6 +514,14 @@ to set-status-dead-or-immune
   set num-infected num-infected - 1
 end
 
+to delegate-vaccines
+  let num-vaccines-today (total-num * (800000 / 328200000)) ; Vaccines per day as of 1/17/21
+  ask n-of num-vaccines-today people [
+   set epi-status "immune"
+  ]
+  set num-vaccinated (num-vaccinated + num-vaccines-today)
+end
+
 
 ; ===============================================================================================================
 ;
@@ -562,15 +627,27 @@ to virginia-restrictions
       ; set capacity to 1/4 of normal capactiy
       set max-capacity (max-capacity * 2)
     ]
-  ] (ticks = 93) [ ; Phase 3: July 1st for most counties, increased capacities
+  ] (ticks >= 93 and current-phase != "Phase 3") [ ; Phase 3: July 1st for most counties, increased capacities
+    set masks true
+    set stay-at-home true
+    set social-distancing true
+    set grocery-distanced true
+    set schools-open false
     set resturant-mode "indoor"
+    set retail-mode "open"
     set current-phase "Phase 3"
 
     ; Change max capacity of resturants and retail
     ask patches with [store-type = "resturant" or store-type = "retail"] [
       ; set capacity to 3/4 of normal capactiy
-      set max-capacity (max-capacity * 1.5)
+      (ifelse (ticks = 93) [
+        set max-capacity (max-capacity * 1.5)
+      ] [ ; Else activated by the vaccine
+        set max-capacity (max-capacity * .75)
+      ])
     ]
+    ; Adjust the transmission probablity
+    adjust-transmission-prob
   ])
 end
 
@@ -818,35 +895,6 @@ to custom-restrictions
     ; adjust-transmission-prob
 
   ])
-end
-
-to move-home
-  ; If schools are closed ask all people in school home
-    if (not schools-open) [
-      ask people with [in-school = true]
-      [
-        set in-school false
-        move-home-daily self
-      ]
-    ]
-
-    ; If resturants are closed ask all people in resturants home
-    if (resturant-mode = "takeout") [
-    ask people with [(in-store = true and ([store-type] of patch-here = "resturant"))]
-      [
-        set in-store false
-        move-home-daily self
-      ]
-    ]
-
-    ; If retail is closed ask all people in retail stores home
-    if (retail-mode = "closed") [
-      ask people with [(in-store = true and ([store-type] of patch-here = "retail"))]
-      [
-        set in-store false
-        move-home-daily self
-      ]
-    ]
 end
 
 to update-capacities
@@ -1117,7 +1165,7 @@ pop-density
 pop-density
 50
 5000
-2330.0
+2120.0
 10
 1
 people/sq. mile
@@ -1195,35 +1243,35 @@ count people with [epi-status = \"immune\"]
 11
 
 TEXTBOX
-385
-569
-455
-587
+1262
+577
+1332
+595
 AGE DATA
 14
 0.0
 1
 
 SLIDER
-330
-590
-502
-623
+1207
+598
+1379
+631
 children-pct
 children-pct
 0
 100
-24.8
+23.5
 .1
 1
 %
 HORIZONTAL
 
 SLIDER
-329
-639
-501
-672
+1206
+647
+1378
+680
 twenties-pct
 twenties-pct
 0
@@ -1235,10 +1283,10 @@ twenties-pct
 HORIZONTAL
 
 SLIDER
-331
-688
-503
-721
+1208
+696
+1380
+729
 thirties-pct
 thirties-pct
 0
@@ -1250,10 +1298,10 @@ thirties-pct
 HORIZONTAL
 
 SLIDER
-330
-737
-502
-770
+1207
+745
+1379
+778
 fourties-pct
 fourties-pct
 0
@@ -1265,10 +1313,10 @@ fourties-pct
 HORIZONTAL
 
 SLIDER
-327
-784
-499
-817
+1204
+792
+1376
+825
 fifties-pct
 fifties-pct
 0
@@ -1280,10 +1328,10 @@ fifties-pct
 HORIZONTAL
 
 SLIDER
-330
-832
-502
-865
+1207
+840
+1379
+873
 sixties-pct
 sixties-pct
 0
@@ -1295,10 +1343,10 @@ sixties-pct
 HORIZONTAL
 
 SLIDER
-327
-878
-499
-911
+1204
+886
+1376
+919
 seventies-pct
 seventies-pct
 0
@@ -1310,10 +1358,10 @@ seventies-pct
 HORIZONTAL
 
 SLIDER
-329
-924
-501
-957
+1206
+932
+1378
+965
 eighty-plus-pct
 eighty-plus-pct
 0
@@ -1343,7 +1391,7 @@ CHOOSER
 restriction-type
 restriction-type
 "Virginia" "New York" "California" "Florida" "Custom"
-1
+0
 
 PLOT
 1101
@@ -1455,7 +1503,7 @@ CHOOSER
 retail-mode-lockdown
 retail-mode-lockdown
 "closed" "curbside" "open" "full capacity"
-3
+0
 
 CHOOSER
 650
@@ -1511,7 +1559,7 @@ phase1-start-day
 phase1-start-day
 1
 365
-9.0
+365.0
 1
 1
 NIL
@@ -1590,7 +1638,7 @@ CHOOSER
 retail-mode-phase1
 retail-mode-phase1
 "closed" "curbside" "open" "full capacity"
-2
+0
 
 TEXTBOX
 936
@@ -1611,7 +1659,7 @@ phase2-start-day
 phase2-start-day
 1
 365
-54.0
+365.0
 1
 1
 NIL
@@ -1711,7 +1759,7 @@ phase3-start-day
 phase3-start-day
 1
 365
-81.0
+365.0
 1
 1
 NIL
@@ -1811,7 +1859,7 @@ phase4-start-day
 phase4-start-day
 1
 365
-93.0
+365.0
 1
 1
 NIL
@@ -2102,10 +2150,10 @@ Phase 5
 1
 
 SLIDER
-11
-642
-191
-675
+12
+697
+192
+730
 mask-factor
 mask-factor
 0
@@ -2117,10 +2165,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-9
-721
-193
-754
+10
+776
+194
+809
 distance-factor
 distance-factor
 0
@@ -2132,10 +2180,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-10
-682
-192
-715
+11
+737
+193
+770
 percent-stay-home
 percent-stay-home
 0
@@ -2147,27 +2195,12 @@ NIL
 HORIZONTAL
 
 SLIDER
-11
-456
-183
-489
-percent-masks
-percent-masks
-0
-100
-100.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
 12
-497
+511
 184
-530
-percent-distanced
-percent-distanced
+544
+percent-masks
+percent-masks
 0
 100
 100.0
@@ -2178,14 +2211,14 @@ HORIZONTAL
 
 SLIDER
 13
-537
+552
 185
-570
-percent-go-to-school
-percent-go-to-school
--1
+585
+percent-distanced
+percent-distanced
+0
 100
-50.0
+100.0
 1
 1
 NIL
@@ -2193,18 +2226,90 @@ HORIZONTAL
 
 SLIDER
 14
-577
+592
 186
-610
-percent-go-to-store
-percent-go-to-store
+625
+percent-go-to-school
+percent-go-to-school
 -1
 100
-50.0
+-1.0
 1
 1
 NIL
 HORIZONTAL
+
+SLIDER
+15
+632
+187
+665
+percent-go-to-store
+percent-go-to-store
+-1
+100
+-1.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+199
+579
+331
+612
+Give-Vaccines
+Give-Vaccines
+0
+1
+-1000
+
+CHOOSER
+338
+580
+485
+625
+Vaccine-Method
+Vaccine-Method
+"Real World" "Random" "High-Transmitters" "Store Visiters" "Children"
+0
+
+SLIDER
+491
+581
+645
+614
+Vaccine-Start-Day
+Vaccine-Start-Day
+150
+365
+270.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+11
+457
+197
+502
+Number of People Vaccinated
+num-vaccinated
+0
+1
+11
+
+TEXTBOX
+245
+557
+619
+580
+If testing vaccines USE VIRGINIA RESTRICTIONS
+15
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -3859,6 +3964,204 @@ NetLogo 6.1.1
       <value value="&quot;curbside&quot;"/>
       <value value="&quot;open&quot;"/>
       <value value="&quot;full capacity&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stay-at-home-phase1">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-distance-phase5">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="percent-distanced" repetitions="8" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>infections-today</metric>
+    <enumeratedValueSet variable="schools-open-phase3">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="schools-open-phase5">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grocery-distance-phase3">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="restriction-type">
+      <value value="&quot;Virginia&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fifties-pct">
+      <value value="12.9"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resturant-mode-phase2">
+      <value value="&quot;outdoor&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-distance-phase1">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grocery-distance-phase5">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="seventies-pct">
+      <value value="7.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="schools-open-phase1">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="percent-stay-home">
+      <value value="40"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grocery-distance-phase1">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="masks-phase5">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="schools-open-lockdown">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stay-at-home-lockdown">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stay-at-home-phase4">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resturant-mode-lockdown">
+      <value value="&quot;full capacity&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="retail-mode-phase4">
+      <value value="&quot;open&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="masks-phase1">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="twenties-pct">
+      <value value="13.7"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="percent-distanced" first="0" step="2" last="100"/>
+    <enumeratedValueSet variable="masks-phase3">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resturant-mode-phase3">
+      <value value="&quot;indoor&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="phase3-start-day">
+      <value value="81"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-distance-phase2">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="thirties-pct">
+      <value value="13.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resturant-mode-phase5">
+      <value value="&quot;full capacity&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="phase4-start-day">
+      <value value="93"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-distance-phase4">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="schools-open-phase2">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stay-at-home-phase2">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="retail-mode-phase2">
+      <value value="&quot;open&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="phase1-start-day">
+      <value value="9"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="phase5-start-day">
+      <value value="365"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="schools-open-phase4">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grocery-distance-phase2">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="phase2-start-day">
+      <value value="54"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resturant-mode-phase1">
+      <value value="&quot;indoor&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="lockdown-start-day">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grocery-distance-phase4">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="masks-lockdown">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="distance-factor">
+      <value value="1.6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="percent-masks">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="retail-mode-lockdown">
+      <value value="&quot;full capacity&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="pop-density">
+      <value value="2330"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="children-pct">
+      <value value="24.8"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="percent-go-to-school">
+      <value value="-1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="retail-mode-phase3">
+      <value value="&quot;open&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stay-at-home-phase3">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-distance-lockdown">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="mask-factor">
+      <value value="2.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fourties-pct">
+      <value value="12.3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="stay-at-home-phase5">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="percent-go-to-store">
+      <value value="-1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="retail-mode-phase5">
+      <value value="&quot;full capacity&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="masks-phase2">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grocery-distance-lockdown">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="eighty-plus-pct">
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sixties-pct">
+      <value value="11.6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="masks-phase4">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="resturant-mode-phase4">
+      <value value="&quot;indoor&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="social-distance-phase3">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="retail-mode-phase1">
+      <value value="&quot;open&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="stay-at-home-phase1">
       <value value="true"/>
