@@ -126,6 +126,8 @@ to go
   ; If we are doing vaccines give out vaccines
   if (Give-Vaccines) [
     delegate-vaccines
+    ; Function to increase number of daily interactions as time goes on
+    open-up
   ]
   tick
 end
@@ -517,7 +519,7 @@ end
 to delegate-vaccines
   let num-vaccines-today (total-num * (800000 / 328200000)) ; Vaccines per day as of 1/17/21
   ask n-of num-vaccines-today people [
-   set epi-status "immune"
+    set epi-status "immune"
   ]
   set num-vaccinated (num-vaccinated + num-vaccines-today)
 end
@@ -647,7 +649,9 @@ to virginia-restrictions
       ])
     ]
     ; Adjust the transmission probablity
-    adjust-transmission-prob
+    if ticks != 93 [
+      adjust-transmission-prob
+    ]
   ])
 end
 
@@ -934,6 +938,11 @@ end
 ; ===============================================================================================================
 
 
+; Function to increase the number of daily interactions as time progresses
+to open-up
+  set percent-people-interacted (percent-people-interacted + .002)
+end
+
 ; Essentially just set the patch color to white
 to setup-patches
   ask patches
@@ -1113,9 +1122,9 @@ to setup-people
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+213
 10
-628
+631
 429
 -1
 -1
@@ -1458,7 +1467,7 @@ SWITCH
 258
 stay-at-home-lockdown
 stay-at-home-lockdown
-1
+0
 1
 -1000
 
@@ -2261,19 +2270,9 @@ SWITCH
 612
 Give-Vaccines
 Give-Vaccines
-0
+1
 1
 -1000
-
-CHOOSER
-338
-580
-485
-625
-Vaccine-Method
-Vaccine-Method
-"Real World" "Random" "High-Transmitters" "Store Visiters" "Children"
-0
 
 SLIDER
 491
