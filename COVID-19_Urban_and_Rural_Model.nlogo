@@ -58,7 +58,7 @@ people-own
   my-home                   ; the patch to return to if it is night
   at-home                   ; if the person is at home (won't get the virus)
   will-distance             ; boolean value for whether the individual will socially distance
-  wears-mask               ; boolean value of whether the individual will wear a mask
+  wears-mask                ; boolean value of whether the individual will wear a mask
 ]
 
 to setup
@@ -518,9 +518,95 @@ end
 
 to delegate-vaccines
   let num-vaccines-today (total-num * (800000 / 328200000)) ; Vaccines per day as of 1/17/21
-  ask n-of num-vaccines-today people [
-    set epi-status "immune"
-  ]
+  let num-vaccinated-today 0
+
+  (ifelse (Vaccine-Method = "Random") [ ; RANDOM
+    ask n-of num-vaccines-today people with [epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+    ]
+  ] (Vaccine-Method = "Oldest") [ ; OLDEST FIRST (helps with death)
+    ; Start vaccinating at the oldest people and work way down
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age > 80 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age > 70 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age > 60 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age > 50 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age > 40 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age > 30 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age > 20 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age >= 0 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+  ] (Vaccine-Method = "Youngest") [ ; YOUNGEST FIRST (helps with schools)
+    ; Start vaccinating at the oldest people and work way down
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age < 20 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age < 30 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age < 40 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age < 50 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age < 60 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age < 70 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age < 80 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [age >= 80 and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+  ] (Vaccine-Method = "Top Transmitters") [ ; TOP TRANSMITTERS
+    ; Start with non-mask and non-distance and then either and then all people
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [wears-mask = False and will-distance = False and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [(wears-mask = False or will-distance = False) and epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+    ask up-to-n-of (num-vaccines-today - num-vaccinated-today) people with [epi-status != "immune" and epi-status != "dead"] [
+      set epi-status "immune"
+      set num-vaccinated-today num-vaccinated-today + 1
+    ]
+  ])
   set num-vaccinated (num-vaccinated + num-vaccines-today)
 end
 
@@ -940,7 +1026,10 @@ end
 
 ; Function to increase the number of daily interactions as time progresses
 to open-up
-  set percent-people-interacted (percent-people-interacted + .002)
+  ; Cap it so it doesn't produce an error
+  if (percent-people-interacted < 1) [
+    set percent-people-interacted (percent-people-interacted + .002)
+  ]
 end
 
 ; Essentially just set the patch color to white
@@ -2270,7 +2359,7 @@ SWITCH
 612
 Give-Vaccines
 Give-Vaccines
-1
+0
 1
 -1000
 
@@ -2309,6 +2398,16 @@ If testing vaccines USE VIRGINIA RESTRICTIONS
 15
 0.0
 1
+
+CHOOSER
+343
+582
+485
+627
+Vaccine-Method
+Vaccine-Method
+"Random" "Oldest" "Youngest" "Top Transmitters"
+3
 
 @#$#@#$#@
 ## WHAT IS IT?
